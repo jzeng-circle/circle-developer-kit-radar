@@ -1,0 +1,21 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+body {
+  margin: 0;
+  background: #0a0b0f;
+  color: #e2e8f0;
+  font-family: system-ui, -apple-system, sans-serif;
+}
+
+#root {
+  width: 100%;
+  min-height: 100vh;
+}
+
+.recharts-tooltip-wrapper .recharts-default-tooltip {
+  background: #1e2130 !important;
+  border-color: #2d3148 !important;
+  border-radius: 8px !important;
+}

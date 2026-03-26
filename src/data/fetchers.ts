@@ -1,0 +1,750 @@
+/**
+ * Live API fetchers — all public, no keys required.
+ *
+ * Sources:
+ *   GitHub Search API   — 10 req/min unauthenticated (set VITE_GITHUB_TOKEN for 30/min)
+ *   Reddit JSON API     — no auth, ~60 req/min
+ *   Dev.to API          — no auth
+ *   Stack Exchange API  — no auth, 300 req/day (set VITE_STACKEXCHANGE_KEY for more)
+ *   npm registry API    — no auth
+ *
+ * Key-gated (requires .env):
+ *   NewsAPI             — VITE_NEWSAPI_KEY  (free: 100 req/day)
+ *   Google CSE          — VITE_GOOGLE_CSE_KEY + VITE_GOOGLE_CSE_ID (free: 100/day)
+ */
+
+import { format, subDays, fromUnixTime } from 'date-fns'
+import type { Mention, NpmDownload, DailyCount, Platform, PlatformSummary } from './mockData'
+import { DEFAULT_SEARCH_CONFIG, type SourceConfig, type OpportunityKeyword } from './searchConfig'
+
+// Active config — can be overridden at runtime by the UI
+let activeConfig: SourceConfig[] = DEFAULT_SEARCH_CONFIG
+let activeRelevanceTerms: string[] = ['circle bridge kit', 'circlebridgekit', 'bridgekit', '@circle-fin/bridge-kit', 'circle-fin/bridge-kit']
+
+export function setSearchConfig(config: SourceConfig[], relevanceTerms?: string[]) {
+  activeConfig = config
+  if (relevanceTerms) activeRelevanceTerms = relevanceTerms
+}
+
+function queriesFor(source: string): string[] {
+  return activeConfig.find(s => s.source === source)?.queries.map(q => q.label) ?? []
+}
+
+function packagesFor(source: string): string[] {
+  return activeConfig.find(s => s.source === source)?.packages ?? []
+}
+
+// ─── Shared helpers ──────────────────────────────────────────────────────────
+
+function githubHeaders(): HeadersInit {
+  const token = import.meta.env.VITE_GITHUB_TOKEN
+  return token ? { Authorization: `Bearer ${token}`, 'User-Agent': 'bridge-kit-dashboard' } : {}
+}
+
+
+// Returns true if the text contains at least one of the active product's terms
+function isRelevant(text: string): boolean {
+  const t = text.toLowerCase()
+  return activeRelevanceTerms.some(term => t.includes(term))
+}
+
+// Stricter check — term must appear in the title or the first 300 chars of body.
+// Used for sources (Reddit, HN) where broad queries can return loosely-matched posts.
+function isRelevantStrict(title: string, body: string): boolean {
+  const t = title.toLowerCase()
+  const b = body.toLowerCase().slice(0, 300)
+  return activeRelevanceTerms.some(term => t.includes(term) || b.includes(term))
+}
+
+// Map a URL's hostname to a Platform for accurate source classification
+function platformFromUrl(url: string): Platform {
+  try {
+    const host = new URL(url).hostname.replace('www.', '')
+    if (host.includes('medium.com'))         return 'Medium'
+    if (host.includes('dev.to'))             return 'Dev.to'
+    if (host.includes('reddit.com'))         return 'Reddit'
+    if (host.includes('github.com') ||
+        host.includes('githubusercontent'))   return 'GitHub'
+    if (host.includes('news.ycombinator'))   return 'Hacker News'
+    if (host.includes('stackoverflow.com'))  return 'Stack Overflow'
+  } catch { /* ignore bad URLs */ }
+  return 'Web Articles'
+}
+
+// Automated dependency bump PRs — no signal value
+function isDependencyBump(title: string): boolean {
+  const t = title.toLowerCase()
+  return t.startsWith('build(deps)') || t.startsWith('chore(deps)') || t.startsWith('bump ')
+}
+
+function classifySentiment(text: string): 'positive' | 'neutral' | 'negative' {
+  const t = text.toLowerCase()
+  const pos = ['great', 'awesome', 'love', 'works', 'solved', 'easy', 'fast', 'seamless', 'perfect', 'excellent', 'nice', 'underrated', 'game changer', 'recommend']
+  const neg = ['broken', 'bug', 'fail', 'error', 'issue', 'problem', 'not working', 'doesnt work', "doesn't work", 'wrong', 'bad', 'slow', 'confusing', 'frustrated', 'timeout']
+  const posScore = pos.filter(w => t.includes(w)).length
+  const negScore = neg.filter(w => t.includes(w)).length
+  if (posScore > negScore) return 'positive'
+  if (negScore > posScore) return 'negative'
+  return 'neutral'
+}
+
+// ─── GitHub ──────────────────────────────────────────────────────────────────
+
+export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
+  // Circle Bridge Kit was published Oct 2025 — always fetch from publish date,
+  // never restrict by `created:>` in the API query (too few results to paginate).
+  // Apply the time range filter client-side after fetching.
+  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
+  const queries = queriesFor('GitHub')
+  const seen = new Set<string>()
+  const mentions: Mention[] = []
+
+  const results = await Promise.allSettled(
+    queries.map(q => {
+      const url = `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&sort=created&order=desc&per_page=50`
+      return fetch(url, { headers: githubHeaders() }).then(r => r.json()).then(d => d.items ?? [])
+    })
+  )
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const item of result.value) {
+      if (seen.has(String(item.id))) continue
+      if (isDependencyBump(item.title)) continue
+      const combined = `${item.title} ${item.body ?? ''}`
+      if (!isRelevant(combined)) continue
+      // Client-side date filter — only include if within the selected range
+      if (item.created_at.slice(0, 10) < cutoff) continue
+      seen.add(String(item.id))
+      mentions.push({
+        id: `gh-${item.id}`,
+        platform: 'GitHub',
+        title: item.title,
+        url: item.html_url,
+        author: item.user?.login ?? 'unknown',
+        date: item.created_at.slice(0, 10),
+        sentiment: classifySentiment(combined),
+        snippet: item.body ? item.body.replace(/<!--[\s\S]*?-->/g, '').replace(/\n+/g, ' ').trim().slice(0, 200) : 'No description.',
+        score: item.reactions?.['+1'] ?? 0,
+      })
+    }
+  }
+  return mentions
+}
+
+export async function fetchGitHubRepos() {
+  const query = queriesFor('GitHub Repos')[0] ?? 'circlefin cctp'
+  const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=8`
+  const res = await fetch(url, { headers: githubHeaders() })
+  if (!res.ok) throw new Error(`GitHub repos API ${res.status}`)
+  const data = await res.json()
+  return (data.items ?? []).map((r: any) => ({
+    name: r.full_name,
+    stars: r.stargazers_count,
+    description: r.description ?? '',
+    url: r.html_url,
+  }))
+}
+
+// ─── Reddit ──────────────────────────────────────────────────────────────────
+
+export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
+  const cutoff = Date.now() / 1000 - days * 86400
+  const queries = queriesFor('Reddit')
+  const headers = { 'User-Agent': 'bridge-kit-dashboard/1.0' }
+
+  const results = await Promise.allSettled(
+    queries.map(q =>
+      fetch(`https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=25&t=year`, { headers })
+        .then(r => r.json())
+        .then(d => d.data?.children ?? [])
+    )
+  )
+
+  const seen = new Set<string>()
+  const mentions: Mention[] = []
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const child of result.value) {
+      const p = child.data
+      if (seen.has(p.id) || p.created_utc < cutoff) continue
+      if (!isRelevantStrict(p.title, p.selftext ?? '')) continue
+      seen.add(p.id)
+      const combined = `${p.title} ${p.selftext ?? ''}`
+      mentions.push({
+        id: `rd-${p.id}`,
+        platform: 'Reddit',
+        title: p.title,
+        url: `https://reddit.com${p.permalink}`,
+        author: p.author,
+        date: format(fromUnixTime(p.created_utc), 'yyyy-MM-dd'),
+        sentiment: classifySentiment(combined),
+        snippet: p.selftext ? p.selftext.trim().slice(0, 200) : '',
+        score: p.score,
+      })
+    }
+  }
+
+  return mentions.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+// ─── Dev.to ──────────────────────────────────────────────────────────────────
+
+export async function fetchDevToMentions(days = 30): Promise<Mention[]> {
+  const cutoff = subDays(new Date(), days).toISOString()
+  const query = queriesFor('Dev.to')[0] ?? '"Circle CCTP"'
+  const res = await fetch(`https://dev.to/api/articles/search?q=${encodeURIComponent(query)}&per_page=20`, {
+    headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' },
+  })
+  if (!res.ok) throw new Error(`Dev.to API ${res.status}`)
+  const articles = await res.json()
+
+  return (articles ?? [])
+    .filter((a: any) => {
+      if (a.published_at < cutoff) return false
+      // Dev.to search ignores quoted phrases — verify relevance client-side
+      return isRelevant(`${a.title} ${a.description ?? ''} ${a.tag_list?.join(' ') ?? ''}`)
+    })
+    .map((a: any): Mention => ({
+      id: `dt-${a.id}`,
+      platform: 'Dev.to',
+      title: a.title,
+      url: a.url,
+      author: a.user?.username ?? 'unknown',
+      date: a.published_at.slice(0, 10),
+      sentiment: classifySentiment(a.title + ' ' + (a.description ?? '')),
+      snippet: a.description ?? '',
+      score: (a.positive_reactions_count ?? 0) + (a.comments_count ?? 0),
+    }))
+}
+
+// ─── Stack Overflow ──────────────────────────────────────────────────────────
+// Note: SO has very few CCTP-specific questions — returns what exists
+
+export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> {
+  const fromDate = Math.floor(subDays(new Date(), days).getTime() / 1000)
+  const key = import.meta.env.VITE_STACKEXCHANGE_KEY ?? ''
+  const keyParam = key ? `&key=${key}` : ''
+  const queries = queriesFor('Stack Overflow')
+
+  const results = await Promise.allSettled(
+    queries.map(q =>
+      fetch(
+        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=creation&q=${encodeURIComponent(q)}&fromdate=${fromDate}&site=stackoverflow&pagesize=15${keyParam}`
+      ).then(r => r.json()).then(d => d.items ?? [])
+    )
+  )
+
+  const seen = new Set<string>()
+  const mentions: Mention[] = []
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const item of result.value) {
+      if (seen.has(String(item.question_id))) continue
+      seen.add(String(item.question_id))
+      mentions.push({
+        id: `so-${item.question_id}`,
+        platform: 'Stack Overflow',
+        title: item.title,
+        url: item.link,
+        author: item.owner?.display_name ?? 'unknown',
+        date: format(fromUnixTime(item.creation_date), 'yyyy-MM-dd'),
+        sentiment: classifySentiment(item.title),
+        snippet: item.tags?.join(', ') ?? '',
+        score: item.score,
+      })
+    }
+  }
+
+  return mentions
+}
+
+// ─── npm downloads ───────────────────────────────────────────────────────────
+// @circle-fin/bridge-kit was published 2025-10-14 so "last-N-days" shorthand
+// returns a 2015 fallback. We always use an explicit date range instead.
+
+const NPM_PUBLISH_DATE = '2025-10-14'
+
+export async function fetchNpmDownloads(weeks = 13): Promise<NpmDownload[]> {
+  const packages = packagesFor('npm')
+  const endDate = format(new Date(), 'yyyy-MM-dd')
+  const startDate = format(subDays(new Date(), weeks * 7), 'yyyy-MM-dd')
+  // Never go before the package publish date
+  const from = startDate < NPM_PUBLISH_DATE ? NPM_PUBLISH_DATE : startDate
+
+  const results = await Promise.allSettled(
+    packages.map(pkg =>
+      fetch(`https://api.npmjs.org/downloads/range/${from}:${endDate}/${encodeURIComponent(pkg)}`)
+        .then(r => r.json())
+    )
+  )
+
+  // Aggregate by day across all packages
+  const byDay: Record<string, number> = {}
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    const downloads: { day: string; downloads: number }[] = result.value.downloads ?? []
+    for (const d of downloads) {
+      byDay[d.day] = (byDay[d.day] ?? 0) + d.downloads
+    }
+  }
+
+  // Group into weekly buckets
+  const sortedDays = Object.keys(byDay).sort()
+  const weekly: NpmDownload[] = []
+  for (let i = 0; i < sortedDays.length; i += 7) {
+    const slice = sortedDays.slice(i, i + 7)
+    const total = slice.reduce((sum, d) => sum + (byDay[d] ?? 0), 0)
+    weekly.push({
+      date: format(new Date(slice[0]), 'MMM d'),
+      downloads: total,
+    })
+  }
+
+  return weekly
+}
+
+// ─── GitHub Commits ───────────────────────────────────────────────────────────
+// Uses the commits search API (requires preview Accept header)
+
+export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
+  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
+  const queries = queriesFor('GitHub Commits')
+  const seen = new Set<string>()
+  const mentions: Mention[] = []
+
+  const results = await Promise.allSettled(
+    queries.map(q => {
+      const url = `https://api.github.com/search/commits?q=${encodeURIComponent(q)}&sort=committer-date&order=desc&per_page=50`
+      return fetch(url, {
+        headers: {
+          ...githubHeaders(),
+          Accept: 'application/vnd.github.cloak-preview',
+        },
+      }).then(r => r.json()).then(d => d.items ?? [])
+    })
+  )
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const item of result.value) {
+      const sha = item.sha as string
+      if (seen.has(sha)) continue
+      const message: string = item.commit?.message ?? ''
+      const combined = message
+      if (isDependencyBump(combined)) continue
+      if (!isRelevant(combined)) continue
+      const dateStr: string = (item.commit?.committer?.date ?? item.commit?.author?.date ?? '').slice(0, 10)
+      if (!dateStr || dateStr < cutoff) continue
+      seen.add(sha)
+      mentions.push({
+        id: `ghc-${sha.slice(0, 8)}`,
+        platform: 'GitHub',
+        title: message.split('\n')[0].trim().slice(0, 120),
+        url: item.html_url ?? item.commit?.url ?? '#',
+        author: item.author?.login ?? item.commit?.author?.name ?? 'unknown',
+        date: dateStr,
+        sentiment: classifySentiment(combined),
+        snippet: message.split('\n').slice(1).join(' ').trim().slice(0, 200) || message.slice(0, 200),
+        score: 0,
+      })
+    }
+  }
+  return mentions
+}
+
+// ─── Hacker News ──────────────────────────────────────────────────────────────
+// Uses Algolia HN search API — no key required
+
+export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
+  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
+  const queries = queriesFor('Hacker News')
+  const seen = new Set<string>()
+  const mentions: Mention[] = []
+
+  const results = await Promise.allSettled(
+    queries.map(q =>
+      fetch(
+        `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=30`,
+        { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } }
+      ).then(r => r.json()).then(d => d.hits ?? [])
+    )
+  )
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const item of result.value) {
+      const id = String(item.objectID)
+      if (seen.has(id)) continue
+      if (!isRelevantStrict(item.title ?? '', item.url ?? '')) continue
+      const dateStr: string = (item.created_at ?? '').slice(0, 10)
+      if (!dateStr || dateStr < cutoff) continue
+      seen.add(id)
+      const combined = `${item.title ?? ''} ${item.url ?? ''}`
+      mentions.push({
+        id: `hn-${id}`,
+        platform: 'Hacker News',
+        title: item.title ?? '(no title)',
+        url: item.url ?? `https://news.ycombinator.com/item?id=${id}`,
+        author: item.author ?? 'unknown',
+        date: dateStr,
+        sentiment: classifySentiment(item.title ?? ''),
+        snippet: item.url ?? '',
+        score: item.points ?? 0,
+      })
+    }
+  }
+
+  return mentions.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+// ─── Medium (via tag RSS proxy) ───────────────────────────────────────────────
+// Medium has no public search API. We fetch the tag RSS via rss2json.com.
+// Returns 0 results for new/unlaunched tags — shown as "live" connection.
+
+export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
+  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
+  const tag = queriesFor('Medium')[0] ?? 'circle-bridge-kit'
+  const rssUrl = `https://medium.com/feed/tag/${encodeURIComponent(tag)}`
+  const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
+
+  const res = await fetch(url, { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } })
+  if (!res.ok) return []
+  const data = await res.json()
+  if (data.status !== 'ok') return []
+
+  return (data.items ?? [])
+    .filter((item: any) => {
+      const dateStr: string = (item.pubDate ?? '').slice(0, 10)
+      if (!dateStr || dateStr < cutoff) return false
+      return isRelevant(`${item.title ?? ''} ${item.description ?? ''} ${item.content ?? ''}`)
+    })
+    .map((item: any): Mention => ({
+      id: `md-${encodeURIComponent(item.link ?? item.title ?? Math.random())}`,
+      platform: 'Medium',
+      title: item.title ?? '(no title)',
+      url: item.link ?? '#',
+      author: item.author ?? 'unknown',
+      date: (item.pubDate ?? '').slice(0, 10),
+      sentiment: classifySentiment(`${item.title ?? ''} ${item.description ?? ''}`),
+      snippet: (item.description ?? '').replace(/<[^>]+>/g, '').trim().slice(0, 200),
+      score: 0,
+    }))
+}
+
+// ─── Tavily Web Search (key-gated) ───────────────────────────────────────────
+// Catches web articles, Binance Square, Medium, Mirror.xyz, blogs, press releases.
+// Requires VITE_TAVILY_KEY. Free tier: 1000 searches/month.
+
+export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
+  const apiKey = import.meta.env.VITE_TAVILY_KEY
+  if (!apiKey) return []
+
+  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
+  const queries = queriesFor('Google CSE')
+  const seen = new Set<string>()
+  const mentions: Mention[] = []
+
+  const results = await Promise.allSettled(
+    queries.map(q =>
+      fetch('https://api.tavily.com/search', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({
+          api_key: apiKey,
+          query: q,
+          search_depth: 'basic',
+          max_results: 10,
+          include_answer: false,
+        }),
+      }).then(r => r.json()).then(d => d.results ?? [])
+    )
+  )
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const item of result.value) {
+      const url: string = item.url ?? ''
+      if (seen.has(url)) continue
+      const combined = `${item.title ?? ''} ${item.content ?? ''}`
+      // Tavily already searched for the product query — skip isRelevant to avoid missing
+      // articles that use alternate spellings like "BridgeKit" or "Bridge Kit SDK"
+      // Tavily returns published_date when available
+      const dateStr = item.published_date
+        ? item.published_date.slice(0, 10)
+        : format(new Date(), 'yyyy-MM-dd')
+      if (dateStr < cutoff) continue
+      seen.add(url)
+      const platform = platformFromUrl(url)
+      mentions.push({
+        id: `tvly-${encodeURIComponent(url).slice(0, 40)}`,
+        platform,
+        title: item.title ?? '(no title)',
+        url,
+        author: new URL(url).hostname.replace('www.', ''),
+        date: dateStr,
+        sentiment: classifySentiment(combined),
+        snippet: (item.content ?? '').replace(/\n/g, ' ').trim().slice(0, 200),
+        score: Math.round((item.score ?? 0) * 100),
+      })
+    }
+  }
+
+  return mentions.sort((a, b) => b.date.localeCompare(a.date))
+}
+
+// ─── NewsAPI (key-gated) ──────────────────────────────────────────────────────
+
+export async function fetchNewsArticles(days = 30): Promise<Mention[]> {
+  const key = import.meta.env.VITE_NEWSAPI_KEY
+  if (!key) return []
+
+  const from = format(subDays(new Date(), days), 'yyyy-MM-dd')
+  const query = queriesFor('News (NewsAPI)').join(' OR ')
+  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${from}&sortBy=publishedAt&pageSize=20&apiKey=${key}`
+
+  const res = await fetch(url)
+  if (!res.ok) return []
+  const data = await res.json()
+
+  return (data.articles ?? []).map((a: any, i: number): Mention => ({
+    id: `news-${i}`,
+    platform: 'Web Articles',
+    title: a.title,
+    url: a.url,
+    author: a.source?.name ?? a.author ?? 'unknown',
+    date: a.publishedAt.slice(0, 10),
+    sentiment: classifySentiment(`${a.title} ${a.description ?? ''}`),
+    snippet: a.description ?? '',
+    score: 0,
+  }))
+}
+
+// ─── Trend data builder ───────────────────────────────────────────────────────
+// Groups a flat list of mentions by date and platform into DailyCount[]
+
+export function buildTrendData(mentions: Mention[], days: number): DailyCount[] {
+  const map: Record<string, DailyCount> = {}
+
+  // Pre-fill every day in range with zeros
+  for (let i = days - 1; i >= 0; i--) {
+    const d = format(subDays(new Date(), i), 'yyyy-MM-dd')
+    map[d] = { date: d, GitHub: 0, 'Stack Overflow': 0, Reddit: 0, Medium: 0, 'Dev.to': 0, 'Web Articles': 0, 'Hacker News': 0, npm: 0, total: 0 }
+  }
+
+  for (const m of mentions) {
+    if (!map[m.date]) continue
+    const row = map[m.date]
+    if (m.platform in row) {
+      (row as any)[m.platform]++
+      row.total++
+    }
+  }
+
+  return Object.values(map).sort((a, b) => a.date.localeCompare(b.date))
+}
+
+// ─── Opportunity fetcher ──────────────────────────────────────────────────────
+// Searches developer forums for threads matching opportunity keywords,
+// then filters OUT any that already mention the product (already aware).
+// Result: threads where the product could be recommended.
+
+export interface Opportunity {
+  id: string
+  platform: 'Reddit' | 'Stack Overflow' | 'Hacker News' | 'GitHub' | 'Dev.to'
+  title: string
+  url: string
+  author: string
+  date: string
+  score: number          // upvotes / points — proxy for reach
+  snippet: string
+  keyword: string        // which opportunity keyword matched
+  rationale: string      // why this keyword is relevant for the product
+}
+
+export async function fetchOpportunities(
+  keywords: OpportunityKeyword[],
+  relevanceTerms: string[],
+  days = 30
+): Promise<Opportunity[]> {
+  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
+  const cutoffUnix = Date.now() / 1000 - days * 86400
+
+  // isAlreadyAware — true if the thread already mentions the product
+  function isAlreadyAware(text: string): boolean {
+    const t = text.toLowerCase()
+    return relevanceTerms.some(term => t.includes(term))
+  }
+
+  const seen = new Set<string>()
+  const opportunities: Opportunity[] = []
+
+  // We fire all keyword × source fetches in parallel
+  const fetches: Promise<void>[] = []
+
+  for (const kw of keywords) {
+    const q = kw.label
+
+    // Reddit
+    fetches.push(
+      fetch(
+        `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=15&t=year`,
+        { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } }
+      )
+        .then(r => r.json())
+        .then(d => {
+          for (const child of d.data?.children ?? []) {
+            const p = child.data
+            if (seen.has(`rd-${p.id}`)) continue
+            if (p.created_utc < cutoffUnix) continue
+            const combined = `${p.title} ${p.selftext ?? ''}`
+            if (isAlreadyAware(combined)) continue
+            seen.add(`rd-${p.id}`)
+            opportunities.push({
+              id: `rd-${p.id}`,
+              platform: 'Reddit',
+              title: p.title,
+              url: `https://reddit.com${p.permalink}`,
+              author: p.author,
+              date: format(fromUnixTime(p.created_utc), 'yyyy-MM-dd'),
+              score: p.score,
+              snippet: p.selftext ? p.selftext.trim().slice(0, 200) : '',
+              keyword: kw.label,
+              rationale: kw.rationale,
+            })
+          }
+        })
+        .catch(() => {})
+    )
+
+    // Stack Overflow
+    const soFromDate = Math.floor(subDays(new Date(), days).getTime() / 1000)
+    const soKey = import.meta.env.VITE_STACKEXCHANGE_KEY ?? ''
+    const soKeyParam = soKey ? `&key=${soKey}` : ''
+    fetches.push(
+      fetch(
+        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=votes&q=${encodeURIComponent(q)}&fromdate=${soFromDate}&site=stackoverflow&pagesize=10${soKeyParam}`
+      )
+        .then(r => r.json())
+        .then(d => {
+          for (const item of d.items ?? []) {
+            const id = `so-${item.question_id}`
+            if (seen.has(id)) continue
+            const combined = `${item.title} ${item.tags?.join(' ') ?? ''}`
+            if (isAlreadyAware(combined)) continue
+            seen.add(id)
+            opportunities.push({
+              id,
+              platform: 'Stack Overflow',
+              title: item.title,
+              url: item.link,
+              author: item.owner?.display_name ?? 'unknown',
+              date: format(fromUnixTime(item.creation_date), 'yyyy-MM-dd'),
+              score: item.score,
+              snippet: item.tags?.join(', ') ?? '',
+              keyword: kw.label,
+              rationale: kw.rationale,
+            })
+          }
+        })
+        .catch(() => {})
+    )
+
+    // Hacker News
+    fetches.push(
+      fetch(
+        `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=10`,
+        { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } }
+      )
+        .then(r => r.json())
+        .then(d => {
+          for (const item of d.hits ?? []) {
+            const id = `hn-${item.objectID}`
+            if (seen.has(id)) continue
+            const dateStr: string = (item.created_at ?? '').slice(0, 10)
+            if (!dateStr || dateStr < cutoff) continue
+            const combined = `${item.title ?? ''} ${item.url ?? ''}`
+            if (isAlreadyAware(combined)) continue
+            seen.add(id)
+            opportunities.push({
+              id,
+              platform: 'Hacker News',
+              title: item.title ?? '(no title)',
+              url: item.url ?? `https://news.ycombinator.com/item?id=${item.objectID}`,
+              author: item.author ?? 'unknown',
+              date: dateStr,
+              score: item.points ?? 0,
+              snippet: '',
+              keyword: kw.label,
+              rationale: kw.rationale,
+            })
+          }
+        })
+        .catch(() => {})
+    )
+
+    // GitHub Issues
+    fetches.push(
+      fetch(
+        `https://api.github.com/search/issues?q=${encodeURIComponent(q)}+is:open+is:issue&sort=created&order=desc&per_page=10`,
+        { headers: githubHeaders() }
+      )
+        .then(r => r.json())
+        .then(d => {
+          for (const item of d.items ?? []) {
+            const id = `gh-${item.id}`
+            if (seen.has(id)) continue
+            if (item.created_at.slice(0, 10) < cutoff) continue
+            if (isDependencyBump(item.title)) continue
+            const combined = `${item.title} ${item.body ?? ''}`
+            if (isAlreadyAware(combined)) continue
+            seen.add(id)
+            opportunities.push({
+              id,
+              platform: 'GitHub',
+              title: item.title,
+              url: item.html_url,
+              author: item.user?.login ?? 'unknown',
+              date: item.created_at.slice(0, 10),
+              score: item.reactions?.['+1'] ?? 0,
+              snippet: item.body ? item.body.replace(/<!--[\s\S]*?-->/g, '').replace(/\n+/g, ' ').trim().slice(0, 200) : '',
+              keyword: kw.label,
+              rationale: kw.rationale,
+            })
+          }
+        })
+        .catch(() => {})
+    )
+  }
+
+  await Promise.allSettled(fetches)
+
+  // Sort by score desc (highest reach first), then date desc
+  return opportunities.sort((a, b) => {
+    if (b.score !== a.score) return b.score - a.score
+    return b.date.localeCompare(a.date)
+  })
+}
+
+// ─── Platform summary builder ─────────────────────────────────────────────────
+
+export function buildPlatformSummaries(current: Mention[], previous: Mention[]): PlatformSummary[] {
+  const platforms: Array<{ platform: Platform; color: string }> = [
+    { platform: 'GitHub',         color: '#6ee7b7' },
+    { platform: 'Reddit',         color: '#fb923c' },
+    { platform: 'Stack Overflow', color: '#f59e0b' },
+    { platform: 'Web Articles',   color: '#818cf8' },
+    { platform: 'Medium',         color: '#38bdf8' },
+    { platform: 'Dev.to',         color: '#e879f9' },
+    { platform: 'Hacker News',    color: '#f97316' },
+  ]
+
+  return platforms.map(({ platform, color }) => {
+    const cur = current.filter(m => m.platform === platform).length
+    const prev = previous.filter(m => m.platform === platform).length
+    const change = prev === 0 ? 100 : Math.round(((cur - prev) / prev) * 100)
+    return { platform, total: cur, change, color }
+  })
+}
