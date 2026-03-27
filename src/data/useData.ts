@@ -58,9 +58,12 @@ export interface DashboardData {
 function summariseError(reason: unknown): string {
   if (!reason) return 'Unknown error'
   const msg = reason instanceof Error ? reason.message : String(reason)
+  // Pass through already-descriptive messages from the fetchers directly
+  if (/not configured/i.test(msg)) return msg
+  if (/rss2json/i.test(msg)) return `Medium RSS proxy error — ${msg}`
   if (/403/.test(msg) || /rate limit/i.test(msg)) return 'Rate limit hit (403) — too many requests. Add a token or wait a minute.'
   if (/429/.test(msg)) return 'Too many requests (429) — API rate limit exceeded.'
-  if (/CORS/i.test(msg) || /ERR_FAILED/.test(msg)) return 'CORS error — API blocked cross-origin requests from this domain.'
+  if (/CORS/i.test(msg) || /ERR_FAILED/.test(msg) || /rate limit.*CORS/i.test(msg)) return 'Rate limit (429) — API blocked response, no CORS headers returned.'
   if (/401/.test(msg)) return 'Unauthorized (401) — invalid or missing API token.'
   if (/404/.test(msg)) return 'Not found (404) — endpoint or resource does not exist.'
   if (/5\d\d/.test(msg)) return `Server error — the API returned ${msg.match(/5\d\d/)?.[0] ?? '5xx'}.`

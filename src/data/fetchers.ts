@@ -751,13 +751,21 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
   // Fetch all configured tags in parallel — product-specific tags (e.g. circle-bridge-kit)
   // plus broad Web3 tags where authors are less likely to use the exact product tag.
 
+  let rss2jsonFailed = 0
   const results = await Promise.allSettled(
     allTags.map(tag => {
       const rssUrl = `https://medium.com/feed/tag/${encodeURIComponent(tag)}`
       const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
       return fetch(url, { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } })
-        .then(r => r.json())
-        .then(d => (d.status === 'ok' ? d.items ?? [] : []))
+        .then(r => {
+          if (!r.ok) throw new Error(`rss2json HTTP ${r.status}`)
+          return r.json()
+        })
+        .then(d => {
+          if (d.status !== 'ok') throw new Error(`rss2json error: ${d.message ?? d.status}`)
+          return d.items ?? []
+        })
+        .catch(err => { rss2jsonFailed++; throw err })
     })
   )
 
@@ -790,6 +798,11 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
     }
   }
 
+  // If every tag fetch failed and we got nothing, surface the error
+  if (mentions.length === 0 && rss2jsonFailed === allTags.length) {
+    const firstRejected = results.find(r => r.status === 'rejected') as PromiseRejectedResult | undefined
+    if (firstRejected) throw firstRejected.reason
+  }
   return toCache(key, mentions.sort((a, b) => b.date.localeCompare(a.date)))
 }
 
@@ -799,7 +812,7 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
 
 export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
   const apiKey = import.meta.env.VITE_TAVILY_KEY
-  if (!apiKey) return []
+  if (!apiKey) throw new Error('VITE_TAVILY_KEY not configured — add it as a GitHub Actions secret to enable web article search')
   const key = cacheKey('fetchGoogleCSEMentions', days, queriesFor('Google CSE'))
   const cached = fromCache<Mention[]>(key); if (cached) return cached
 
@@ -862,7 +875,7 @@ export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
 
 export async function fetchNewsArticles(days = 30): Promise<Mention[]> {
   const apiKey = import.meta.env.VITE_NEWSAPI_KEY
-  if (!apiKey) return []
+  if (!apiKey) throw new Error('VITE_NEWSAPI_KEY not configured — add it as a GitHub Actions secret to enable news search')
   const cKey = cacheKey('fetchNewsArticles', days, queriesFor('News (NewsAPI)'))
   const cached = fromCache<Mention[]>(cKey); if (cached) return cached
 
