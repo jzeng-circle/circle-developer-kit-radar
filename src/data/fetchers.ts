@@ -41,6 +41,26 @@ function githubHeaders(): HeadersInit {
   return token ? { Authorization: `Bearer ${token}`, 'User-Agent': 'circle-developer-kit-radar' } : {}
 }
 
+const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
+
+// Run an array of async tasks sequentially with a delay between each.
+// Used for rate-limited APIs (GitHub unauthenticated: 10/min, SO: 300/day).
+async function sequential<T>(
+  items: (() => Promise<T>)[],
+  delayMs = 0
+): Promise<PromiseSettledResult<T>[]> {
+  const results: PromiseSettledResult<T>[] = []
+  for (let i = 0; i < items.length; i++) {
+    if (i > 0 && delayMs > 0) await sleep(delayMs)
+    try {
+      results.push({ status: 'fulfilled', value: await items[i]() })
+    } catch (e) {
+      results.push({ status: 'rejected', reason: e })
+    }
+  }
+  return results
+}
+
 // ─── Content screener ────────────────────────────────────────────────────────
 //
 // Two-layer filter applied to every data point before it enters the pipeline:
@@ -202,11 +222,15 @@ export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
   const seen = new Set<string>()
   const mentions: Mention[] = []
 
-  const results = await Promise.allSettled(
-    queries.map(q => {
+  // Sequential with delay to respect unauthenticated rate limit (10 req/min).
+  // With a token the limit is 30/min so no delay needed, but sequential is safe either way.
+  const hasToken = !!import.meta.env.VITE_GITHUB_TOKEN
+  const results = await sequential(
+    queries.map(q => () => {
       const url = `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&sort=created&order=desc&per_page=50`
       return fetch(url, { headers: githubHeaders() }).then(r => r.json()).then(d => d.items ?? [])
-    })
+    }),
+    hasToken ? 0 : 1500
   )
 
   for (const result of results) {
@@ -287,11 +311,13 @@ export async function fetchGitHubRepos() {
   const candidates: { full_name: string; stars: number; description: string; html_url: string }[] = []
 
   // Step 1: collect candidates that pass the anchor check
-  const results = await Promise.allSettled(
-    queries.map(q => {
+  const hasToken = !!import.meta.env.VITE_GITHUB_TOKEN
+  const results = await sequential(
+    queries.map(q => () => {
       const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=10`
       return fetch(url, { headers: githubHeaders() }).then(r => r.json()).then(d => d.items ?? [])
-    })
+    }),
+    hasToken ? 0 : 1500
   )
 
   for (const result of results) {
@@ -354,12 +380,13 @@ export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
   const queries = queriesFor('Reddit')
   const headers = { 'User-Agent': 'circle-developer-kit-radar/1.0' }
 
-  const results = await Promise.allSettled(
-    queries.map(q =>
+  const results = await sequential(
+    queries.map(q => () =>
       fetch(`https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=25&t=year`, { headers })
         .then(r => r.json())
         .then(d => d.data?.children ?? [])
-    )
+    ),
+    1000
   )
 
   const seen = new Set<string>()
@@ -435,12 +462,13 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
   const origin = typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''
   const originParam = origin ? `&origin=${origin}` : ''
 
-  const results = await Promise.allSettled(
-    queries.map(q =>
+  const results = await sequential(
+    queries.map(q => () =>
       fetch(
         `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=creation&q=${encodeURIComponent(q)}&fromdate=${fromDate}&site=stackoverflow&pagesize=15${keyParam}${originParam}`
       ).then(r => r.json()).then(d => d.items ?? [])
-    )
+    ),
+    2000
   )
 
   const seen = new Set<string>()
@@ -524,8 +552,9 @@ export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
   const seen = new Set<string>()
   const mentions: Mention[] = []
 
-  const results = await Promise.allSettled(
-    queries.map(q => {
+  const hasToken = !!import.meta.env.VITE_GITHUB_TOKEN
+  const results = await sequential(
+    queries.map(q => () => {
       const url = `https://api.github.com/search/commits?q=${encodeURIComponent(q)}&sort=committer-date&order=desc&per_page=50`
       return fetch(url, {
         headers: {
@@ -533,7 +562,8 @@ export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
           Accept: 'application/vnd.github.cloak-preview',
         },
       }).then(r => r.json()).then(d => d.items ?? [])
-    })
+    }),
+    hasToken ? 0 : 1500
   )
 
   for (const result of results) {
@@ -816,15 +846,21 @@ export async function fetchOpportunities(
   const seen = new Set<string>()
   const opportunities: Opportunity[] = []
 
-  // We fire all keyword × source fetches in parallel
-  const fetches: Promise<void>[] = []
+  const soFromDate = Math.floor(subDays(new Date(), days).getTime() / 1000)
+  const soKey = import.meta.env.VITE_STACKEXCHANGE_KEY ?? ''
+  const soKeyParam = soKey ? `&key=${soKey}` : ''
+  const soOrigin = encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')
+  const hasGhToken = !!import.meta.env.VITE_GITHUB_TOKEN
 
-  for (const kw of keywords) {
+  // Process keywords sequentially to avoid overwhelming rate limits.
+  // Within each keyword, HN (generous limits) runs in parallel; Reddit and SO are staggered.
+  for (let kwIdx = 0; kwIdx < keywords.length; kwIdx++) {
+    if (kwIdx > 0) await sleep(1200) // gap between keywords
+    const kw = keywords[kwIdx]
     const q = kw.label
 
-    // Reddit
-    fetches.push(
-      fetch(
+    // Reddit — 1 req per keyword
+    await fetch(
         `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=15&t=year`,
         { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
       )
@@ -853,15 +889,12 @@ export async function fetchOpportunities(
           }
         })
         .catch(() => {})
-    )
 
-    // Stack Overflow
-    const soFromDate = Math.floor(subDays(new Date(), days).getTime() / 1000)
-    const soKey = import.meta.env.VITE_STACKEXCHANGE_KEY ?? ''
-    const soKeyParam = soKey ? `&key=${soKey}` : ''
-    fetches.push(
-      fetch(
-        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=votes&q=${encodeURIComponent(q)}&fromdate=${soFromDate}&site=stackoverflow&pagesize=10${soKeyParam}&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')}`
+    await sleep(800)
+
+    // Stack Overflow — 1 req per keyword, 800ms after Reddit
+    await fetch(
+        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=votes&q=${encodeURIComponent(q)}&fromdate=${soFromDate}&site=stackoverflow&pagesize=10${soKeyParam}&origin=${soOrigin}`
       )
         .then(r => r.json())
         .then(d => {
@@ -887,11 +920,9 @@ export async function fetchOpportunities(
           }
         })
         .catch(() => {})
-    )
 
-    // Hacker News
-    fetches.push(
-      fetch(
+    // Hacker News — generous rate limits, fire immediately
+    await fetch(
         `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=10`,
         { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
       )
@@ -923,9 +954,9 @@ export async function fetchOpportunities(
         .catch(() => {})
     )
 
-    // GitHub Issues
-    fetches.push(
-      fetch(
+    // GitHub Issues — stagger after HN
+    if (!hasGhToken) await sleep(1500)
+    await fetch(
         `https://api.github.com/search/issues?q=${encodeURIComponent(q)}+is:open+is:issue&sort=created&order=desc&per_page=10`,
         { headers: githubHeaders() }
       )
@@ -955,10 +986,7 @@ export async function fetchOpportunities(
           }
         })
         .catch(() => {})
-    )
   }
-
-  await Promise.allSettled(fetches)
 
   // Sort by score desc (highest reach first), then date desc
   return opportunities.sort((a, b) => {
