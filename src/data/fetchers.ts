@@ -85,20 +85,23 @@ const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
 
 // Run an array of async tasks sequentially with a delay between each.
 // Used for rate-limited APIs (GitHub unauthenticated: 10/min, SO: 300/day).
+// Returns settled results AND separately tracks whether any query errored.
 async function sequential<T>(
   items: (() => Promise<T>)[],
   delayMs = 0
-): Promise<PromiseSettledResult<T>[]> {
+): Promise<{ results: PromiseSettledResult<T>[]; firstError: unknown | null }> {
   const results: PromiseSettledResult<T>[] = []
+  let firstError: unknown | null = null
   for (let i = 0; i < items.length; i++) {
     if (i > 0 && delayMs > 0) await sleep(delayMs)
     try {
       results.push({ status: 'fulfilled', value: await items[i]() })
     } catch (e) {
+      if (firstError === null) firstError = e
       results.push({ status: 'rejected', reason: e })
     }
   }
-  return results
+  return { results, firstError }
 }
 
 // ─── Content screener ────────────────────────────────────────────────────────
@@ -268,7 +271,7 @@ export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
   // Sequential with delay to respect unauthenticated rate limit (10 req/min).
   // With a token the limit is 30/min so no delay needed, but sequential is safe either way.
   const hasToken = !!import.meta.env.VITE_GITHUB_TOKEN
-  const results = await sequential(
+  const { results, firstError } = await sequential(
     queries.map(q => () => {
       const url = `https://api.github.com/search/issues?q=${encodeURIComponent(q)}&sort=created&order=desc&per_page=50`
       return fetch(url, { headers: githubHeaders() }).then(r => r.json()).then(d => d.items ?? [])
@@ -300,6 +303,7 @@ export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
       })
     }
   }
+  if (mentions.length === 0 && firstError !== null) throw firstError
   return toCache(key, mentions)
 }
 
@@ -359,7 +363,7 @@ export async function fetchGitHubRepos() {
 
   // Step 1: collect candidates that pass the anchor check
   const hasToken = !!import.meta.env.VITE_GITHUB_TOKEN
-  const results = await sequential(
+  const { results, firstError } = await sequential(
     queries.map(q => () => {
       const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=10`
       return fetch(url, { headers: githubHeaders() }).then(r => r.json()).then(d => d.items ?? [])
@@ -385,6 +389,8 @@ export async function fetchGitHubRepos() {
       })
     }
   }
+
+  if (candidates.length === 0 && firstError !== null) throw firstError
 
   // Step 2: verify each candidate by fetching its package.json — ground truth.
   // Only keep repos that actually declare at least one of this product's packages
@@ -429,7 +435,7 @@ export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
   const queries = queriesFor('Reddit')
   const headers = { 'User-Agent': 'circle-developer-kit-radar/1.0' }
 
-  const results = await sequential(
+  const { results, firstError } = await sequential(
     queries.map(q => () =>
       fetch(`https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=25&t=year`, { headers })
         .then(r => {
@@ -471,6 +477,7 @@ export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
     }
   }
 
+  if (mentions.length === 0 && firstError !== null) throw firstError
   return toCache(key, mentions.sort((a, b) => b.date.localeCompare(a.date)))
 }
 
@@ -530,7 +537,7 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
   // SO has a shared 300 req/day unauthenticated limit across all browser sessions.
   const soQueries = queries.slice(0, 1)
 
-  const results = await sequential(
+  const { results, firstError } = await sequential(
     soQueries.map(q => () =>
       fetch(
         `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=creation&q=${encodeURIComponent(q)}&fromdate=${fromDate}&site=stackoverflow&pagesize=15${keyParam}${originParam}`
@@ -576,6 +583,7 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
     }
   }
 
+  if (mentions.length === 0 && firstError !== null) throw firstError
   return toCache(cKey, mentions)
 }
 
@@ -638,7 +646,7 @@ export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
   const mentions: Mention[] = []
 
   const hasToken = !!import.meta.env.VITE_GITHUB_TOKEN
-  const results = await sequential(
+  const { results, firstError } = await sequential(
     queries.map(q => () => {
       const url = `https://api.github.com/search/commits?q=${encodeURIComponent(q)}&sort=committer-date&order=desc&per_page=50`
       return fetch(url, {
@@ -677,6 +685,7 @@ export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
       })
     }
   }
+  if (mentions.length === 0 && firstError !== null) throw firstError
   return toCache(key, mentions)
 }
 
