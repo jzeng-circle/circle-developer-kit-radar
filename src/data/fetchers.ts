@@ -428,10 +428,14 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
   const keyParam = key ? `&key=${key}` : ''
   const queries = queriesFor('Stack Overflow')
 
+  // &origin= is required for CORS when calling from a browser on a non-localhost domain
+  const origin = typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''
+  const originParam = origin ? `&origin=${origin}` : ''
+
   const results = await Promise.allSettled(
     queries.map(q =>
       fetch(
-        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=creation&q=${encodeURIComponent(q)}&fromdate=${fromDate}&site=stackoverflow&pagesize=15${keyParam}`
+        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=creation&q=${encodeURIComponent(q)}&fromdate=${fromDate}&site=stackoverflow&pagesize=15${keyParam}${originParam}`
       ).then(r => r.json()).then(d => d.items ?? [])
     )
   )
@@ -835,7 +839,7 @@ export async function fetchOpportunities(
     const soKeyParam = soKey ? `&key=${soKey}` : ''
     fetches.push(
       fetch(
-        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=votes&q=${encodeURIComponent(q)}&fromdate=${soFromDate}&site=stackoverflow&pagesize=10${soKeyParam}`
+        `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=votes&q=${encodeURIComponent(q)}&fromdate=${soFromDate}&site=stackoverflow&pagesize=10${soKeyParam}&origin=${encodeURIComponent(typeof window !== 'undefined' ? window.location.origin : '')}`
       )
         .then(r => r.json())
         .then(d => {

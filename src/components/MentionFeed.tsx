@@ -34,9 +34,24 @@ const ALL_PLATFORMS: Platform[] = ['GitHub', 'Stack Overflow', 'Reddit', 'Medium
 
 interface Props {
   mentions: Mention[]
+  isLoading?: boolean
 }
 
-export default function MentionFeed({ mentions }: Props) {
+function SkeletonMention() {
+  return (
+    <div className="bg-gray-800/50 border border-gray-700/50 rounded-lg p-4 animate-pulse">
+      <div className="flex items-center justify-between gap-3 mb-3">
+        <div className="h-3 w-20 bg-gray-700 rounded" />
+        <div className="h-3 w-16 bg-gray-700 rounded" />
+      </div>
+      <div className="h-4 w-3/4 bg-gray-700 rounded mb-2" />
+      <div className="h-3 w-full bg-gray-700/60 rounded mb-1" />
+      <div className="h-3 w-2/3 bg-gray-700/60 rounded" />
+    </div>
+  )
+}
+
+export default function MentionFeed({ mentions, isLoading }: Props) {
   const [filter, setFilter] = useState<Platform | 'All'>('All')
   const [sentimentFilter, setSentimentFilter] = useState<'all' | 'positive' | 'neutral' | 'negative'>('all')
 
@@ -90,7 +105,15 @@ export default function MentionFeed({ mentions }: Props) {
       </div>
 
       <div className="space-y-3 max-h-[520px] overflow-y-auto pr-1">
-        {filtered.length === 0 && (
+        {isLoading && mentions.length === 0 && (
+          <>
+            <SkeletonMention />
+            <SkeletonMention />
+            <SkeletonMention />
+            <SkeletonMention />
+          </>
+        )}
+        {!isLoading && filtered.length === 0 && (
           <p className="text-gray-500 text-sm text-center py-8">No mentions match the current filters.</p>
         )}
         {filtered.map(mention => {

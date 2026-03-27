@@ -95,6 +95,12 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0b0f] text-gray-100">
+      {/* Loading bar — visible while any source is fetching */}
+      {isLoading && (
+        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-gray-800 overflow-hidden">
+          <div className="h-full bg-indigo-500 animate-[loading-bar_1.8s_ease-in-out_infinite]" />
+        </div>
+      )}
       {/* Header */}
       <header className="border-b border-gray-800 bg-gray-900/60 backdrop-blur sticky top-0 z-10">
         <div className="max-w-screen-xl mx-auto px-6 py-3 flex items-center justify-between">
@@ -242,9 +248,9 @@ export default function App() {
 
             <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
               <div className="lg:col-span-2">
-                <MentionFeed mentions={data.mentions} />
+                <MentionFeed mentions={data.mentions} isLoading={isLoading} />
               </div>
-              <TopRepos repos={data.topRepos} />
+              <TopRepos repos={data.topRepos} isLoading={isLoading} />
             </div>
           </>
         ) : (
