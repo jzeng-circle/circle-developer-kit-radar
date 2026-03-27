@@ -17,6 +17,45 @@ import { format, subDays, fromUnixTime } from 'date-fns'
 import type { Mention, NpmDownload, DailyCount, Platform, PlatformSummary } from './mockData'
 import { DEFAULT_SEARCH_CONFIG, type SourceConfig, type OpportunityKeyword } from './searchConfig'
 
+// ─── In-memory result cache (1-hour TTL) ─────────────────────────────────────
+// Prevents redundant API calls when the user refreshes within the same session.
+// Cache is keyed by fetcher name + serialised arguments.
+// Invalidated automatically when the product changes (different key) or when
+// the user explicitly hits "Apply & Refresh" (setSearchConfig resets the cache).
+
+const CACHE_TTL_MS = 60 * 60 * 1000 // 1 hour
+
+interface CacheEntry<T> {
+  value: T
+  expiresAt: number
+}
+
+// eslint-disable-next-line @typescript-eslint/no-explicit-any
+const resultCache = new Map<string, CacheEntry<any>>()
+
+function cacheKey(name: string, ...args: unknown[]): string {
+  return `${name}::${JSON.stringify(args)}`
+}
+
+function fromCache<T>(key: string): T | null {
+  const entry = resultCache.get(key)
+  if (!entry) return null
+  if (Date.now() > entry.expiresAt) { resultCache.delete(key); return null }
+  return entry.value as T
+}
+
+function toCache<T>(key: string, value: T): T {
+  resultCache.set(key, { value, expiresAt: Date.now() + CACHE_TTL_MS })
+  return value
+}
+
+/** Call after config changes to invalidate stale cached results */
+export function invalidateCache() {
+  resultCache.clear()
+}
+
+// ─── Active config ────────────────────────────────────────────────────────────
+
 // Active config — can be overridden at runtime by the UI
 let activeConfig: SourceConfig[] = DEFAULT_SEARCH_CONFIG
 let activeRelevanceTerms: string[] = ['circle bridge kit', 'circlebridgekit', 'bridgekit', '@circle-fin/bridge-kit', 'circle-fin/bridge-kit']
@@ -24,6 +63,7 @@ let activeRelevanceTerms: string[] = ['circle bridge kit', 'circlebridgekit', 'b
 export function setSearchConfig(config: SourceConfig[], relevanceTerms?: string[]) {
   activeConfig = config
   if (relevanceTerms) activeRelevanceTerms = relevanceTerms
+  invalidateCache() // config changed — cached results are stale
 }
 
 function queriesFor(source: string): string[] {
@@ -214,6 +254,9 @@ function classifySentiment(text: string): 'positive' | 'neutral' | 'negative' {
 // ─── GitHub ──────────────────────────────────────────────────────────────────
 
 export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
+  const key = cacheKey('fetchGitHubMentions', days, queriesFor('GitHub'))
+  const cached = fromCache<Mention[]>(key)
+  if (cached) return cached
   // Circle Bridge Kit was published Oct 2025 — always fetch from publish date,
   // never restrict by `created:>` in the API query (too few results to paginate).
   // Apply the time range filter client-side after fetching.
@@ -257,7 +300,7 @@ export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
       })
     }
   }
-  return mentions
+  return toCache(key, mentions)
 }
 
 // Scan all package.json files in a repo (excluding node_modules) and return
@@ -306,6 +349,10 @@ async function fetchCircleKitsFromPackageJson(fullName: string): Promise<string[
 export async function fetchGitHubRepos() {
   const queries = queriesFor('GitHub Repos')
   if (queries.length === 0) return []
+  const key = cacheKey('fetchGitHubRepos', queries, packagesFor('npm'))
+  type RepoResult = { name: string; stars: number; description: string; url: string; kits: string[] }[]
+  const cached = fromCache<RepoResult>(key)
+  if (cached) return cached
 
   const seen = new Set<string>()
   const candidates: { full_name: string; stars: number; description: string; html_url: string }[] = []
@@ -370,12 +417,14 @@ export async function fetchGitHubRepos() {
       kits: r.kits,
     }))
 
-  return repos.sort((a, b) => b.stars - a.stars).slice(0, 8)
+  return toCache(key, repos.sort((a, b) => b.stars - a.stars).slice(0, 8))
 }
 
 // ─── Reddit ──────────────────────────────────────────────────────────────────
 
 export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
+  const key = cacheKey('fetchRedditMentions', days, queriesFor('Reddit'))
+  const cached = fromCache<Mention[]>(key); if (cached) return cached
   const cutoff = Date.now() / 1000 - days * 86400
   const queries = queriesFor('Reddit')
   const headers = { 'User-Agent': 'circle-developer-kit-radar/1.0' }
@@ -415,12 +464,14 @@ export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
     }
   }
 
-  return mentions.sort((a, b) => b.date.localeCompare(a.date))
+  return toCache(key, mentions.sort((a, b) => b.date.localeCompare(a.date)))
 }
 
 // ─── Dev.to ──────────────────────────────────────────────────────────────────
 
 export async function fetchDevToMentions(days = 30): Promise<Mention[]> {
+  const key = cacheKey('fetchDevToMentions', days, queriesFor('Dev.to'))
+  const cached = fromCache<Mention[]>(key); if (cached) return cached
   const cutoff = subDays(new Date(), days).toISOString()
   const query = queriesFor('Dev.to')[0] ?? '"Circle CCTP"'
   const res = await fetch(`https://dev.to/api/articles/search?q=${encodeURIComponent(query)}&per_page=20`, {
@@ -429,7 +480,7 @@ export async function fetchDevToMentions(days = 30): Promise<Mention[]> {
   if (!res.ok) throw new Error(`Dev.to API ${res.status}`)
   const articles = await res.json()
 
-  return (articles ?? [])
+  const result: Mention[] = (articles ?? [])
     .filter((a: any) => {
       if (a.published_at < cutoff) return false
       // Dev.to search ignores quoted phrases — verify relevance client-side
@@ -447,12 +498,15 @@ export async function fetchDevToMentions(days = 30): Promise<Mention[]> {
       snippet: a.description ?? '',
       score: (a.positive_reactions_count ?? 0) + (a.comments_count ?? 0),
     }))
+  return toCache(key, result)
 }
 
 // ─── Stack Overflow ──────────────────────────────────────────────────────────
 // Note: SO has very few CCTP-specific questions — returns what exists
 
 export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> {
+  const cKey = cacheKey('fetchStackOverflowMentions', days, queriesFor('Stack Overflow'))
+  const cached = fromCache<Mention[]>(cKey); if (cached) return cached
   const fromDate = Math.floor(subDays(new Date(), days).getTime() / 1000)
   const key = import.meta.env.VITE_STACKEXCHANGE_KEY ?? ''
   const keyParam = key ? `&key=${key}` : ''
@@ -495,7 +549,7 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
     }
   }
 
-  return mentions
+  return toCache(cKey, mentions)
 }
 
 // ─── npm downloads ───────────────────────────────────────────────────────────
@@ -505,6 +559,8 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
 const NPM_PUBLISH_DATE = '2025-10-14'
 
 export async function fetchNpmDownloads(weeks = 13): Promise<NpmDownload[]> {
+  const key = cacheKey('fetchNpmDownloads', weeks, packagesFor('npm'))
+  const cached = fromCache<NpmDownload[]>(key); if (cached) return cached
   const packages = packagesFor('npm')
   const endDate = format(new Date(), 'yyyy-MM-dd')
   const startDate = format(subDays(new Date(), weeks * 7), 'yyyy-MM-dd')
@@ -540,13 +596,15 @@ export async function fetchNpmDownloads(weeks = 13): Promise<NpmDownload[]> {
     })
   }
 
-  return weekly
+  return toCache(key, weekly)
 }
 
 // ─── GitHub Commits ───────────────────────────────────────────────────────────
 // Uses the commits search API (requires preview Accept header)
 
 export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
+  const key = cacheKey('fetchGitHubCommits', days, queriesFor('GitHub Commits'))
+  const cached = fromCache<Mention[]>(key); if (cached) return cached
   const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
   const queries = queriesFor('GitHub Commits')
   const seen = new Set<string>()
@@ -592,13 +650,15 @@ export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
       })
     }
   }
-  return mentions
+  return toCache(key, mentions)
 }
 
 // ─── Hacker News ──────────────────────────────────────────────────────────────
 // Uses Algolia HN search API — no key required
 
 export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
+  const key = cacheKey('fetchHackerNewsMentions', days, queriesFor('Hacker News'))
+  const cached = fromCache<Mention[]>(key); if (cached) return cached
   const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
   const queries = queriesFor('Hacker News')
   const seen = new Set<string>()
@@ -638,7 +698,7 @@ export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
     }
   }
 
-  return mentions.sort((a, b) => b.date.localeCompare(a.date))
+  return toCache(key, mentions.sort((a, b) => b.date.localeCompare(a.date)))
 }
 
 // ─── Medium (via tag RSS proxy) ───────────────────────────────────────────────
@@ -646,12 +706,14 @@ export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
 // Returns 0 results for new/unlaunched tags — shown as "live" connection.
 
 export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
-  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
-  // Fetch all configured tags in parallel — product-specific tags (e.g. circle-bridge-kit)
-  // plus broad Web3 tags where authors are less likely to use the exact product tag.
   const configuredTags = queriesFor('Medium')
   const broadTags = ['usdc', 'stablecoin', 'web3', 'cctp']
   const allTags = [...new Set([...configuredTags, ...broadTags])]
+  const key = cacheKey('fetchMediumMentions', days, allTags)
+  const cached = fromCache<Mention[]>(key); if (cached) return cached
+  const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
+  // Fetch all configured tags in parallel — product-specific tags (e.g. circle-bridge-kit)
+  // plus broad Web3 tags where authors are less likely to use the exact product tag.
 
   const results = await Promise.allSettled(
     allTags.map(tag => {
@@ -692,7 +754,7 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
     }
   }
 
-  return mentions.sort((a, b) => b.date.localeCompare(a.date))
+  return toCache(key, mentions.sort((a, b) => b.date.localeCompare(a.date)))
 }
 
 // ─── Tavily Web Search (key-gated) ───────────────────────────────────────────
@@ -702,6 +764,8 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
 export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
   const apiKey = import.meta.env.VITE_TAVILY_KEY
   if (!apiKey) return []
+  const key = cacheKey('fetchGoogleCSEMentions', days, queriesFor('Google CSE'))
+  const cached = fromCache<Mention[]>(key); if (cached) return cached
 
   const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
   const queries = queriesFor('Google CSE')
@@ -755,24 +819,26 @@ export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
     }
   }
 
-  return mentions.sort((a, b) => b.date.localeCompare(a.date))
+  return toCache(key, mentions.sort((a, b) => b.date.localeCompare(a.date)))
 }
 
 // ─── NewsAPI (key-gated) ──────────────────────────────────────────────────────
 
 export async function fetchNewsArticles(days = 30): Promise<Mention[]> {
-  const key = import.meta.env.VITE_NEWSAPI_KEY
-  if (!key) return []
+  const apiKey = import.meta.env.VITE_NEWSAPI_KEY
+  if (!apiKey) return []
+  const cKey = cacheKey('fetchNewsArticles', days, queriesFor('News (NewsAPI)'))
+  const cached = fromCache<Mention[]>(cKey); if (cached) return cached
 
   const from = format(subDays(new Date(), days), 'yyyy-MM-dd')
   const query = queriesFor('News (NewsAPI)').join(' OR ')
-  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${from}&sortBy=publishedAt&pageSize=20&apiKey=${key}`
+  const url = `https://newsapi.org/v2/everything?q=${encodeURIComponent(query)}&from=${from}&sortBy=publishedAt&pageSize=20&apiKey=${apiKey}`
 
   const res = await fetch(url)
   if (!res.ok) return []
   const data = await res.json()
 
-  return (data.articles ?? [])
+  const result: Mention[] = (data.articles ?? [])
     .filter((a: any) => isCircleFinBlockchainContent(`${a.title ?? ''} ${a.description ?? ''}`))
     .map((a: any, i: number): Mention => ({
     id: `news-${i}`,
@@ -785,6 +851,7 @@ export async function fetchNewsArticles(days = 30): Promise<Mention[]> {
     snippet: a.description ?? '',
     score: 0,
   }))
+  return toCache(cKey, result)
 }
 
 // ─── Trend data builder ───────────────────────────────────────────────────────
