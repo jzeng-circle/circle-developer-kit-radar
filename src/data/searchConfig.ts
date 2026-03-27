@@ -171,6 +171,11 @@ const BRIDGE_KIT_CONFIG: SourceConfig[] = [
         label: '"@circle-fin/bridge-kit"',
         note: 'Package name references in tutorials and technical articles',
       },
+      {
+        id: 'cse-3',
+        label: 'circle bridge kit site:medium.com',
+        note: 'Medium articles mentioning Circle Bridge Kit that may not use the exact tag',
+      },
     ],
   },
 ]

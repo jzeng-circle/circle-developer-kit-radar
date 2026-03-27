@@ -110,6 +110,7 @@ const CIRCLE_FIN_SIGNALS = [
   'circle programmable', 'circle infrastructure',
   'circle usdc', 'circle stablecoin', 'circle wallet',
   'circle bridge', 'circle swap', 'circle app kit',
+  "circle's bridge", "circle's swap", "circle's app",
 ]
 
 /**
@@ -614,33 +615,52 @@ export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
 
 export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
   const cutoff = subDays(new Date(), days).toISOString().slice(0, 10)
-  const tag = queriesFor('Medium')[0] ?? 'circle-bridge-kit'
-  const rssUrl = `https://medium.com/feed/tag/${encodeURIComponent(tag)}`
-  const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
+  // Fetch all configured tags in parallel — product-specific tags (e.g. circle-bridge-kit)
+  // plus broad Web3 tags where authors are less likely to use the exact product tag.
+  const configuredTags = queriesFor('Medium')
+  const broadTags = ['usdc', 'stablecoin', 'web3', 'cctp']
+  const allTags = [...new Set([...configuredTags, ...broadTags])]
 
-  const res = await fetch(url, { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } })
-  if (!res.ok) return []
-  const data = await res.json()
-  if (data.status !== 'ok') return []
-
-  return (data.items ?? [])
-    .filter((item: any) => {
-      const dateStr: string = (item.pubDate ?? '').slice(0, 10)
-      if (!dateStr || dateStr < cutoff) return false
-      const combined = `${item.title ?? ''} ${item.description ?? ''} ${item.content ?? ''}`
-      return isRelevant(combined) && isCircleFinBlockchainContent(combined)
+  const results = await Promise.allSettled(
+    allTags.map(tag => {
+      const rssUrl = `https://medium.com/feed/tag/${encodeURIComponent(tag)}`
+      const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
+      return fetch(url, { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } })
+        .then(r => r.json())
+        .then(d => (d.status === 'ok' ? d.items ?? [] : []))
     })
-    .map((item: any): Mention => ({
-      id: `md-${encodeURIComponent(item.link ?? item.title ?? Math.random())}`,
-      platform: 'Medium',
-      title: item.title ?? '(no title)',
-      url: item.link ?? '#',
-      author: item.author ?? 'unknown',
-      date: (item.pubDate ?? '').slice(0, 10),
-      sentiment: classifySentiment(`${item.title ?? ''} ${item.description ?? ''}`),
-      snippet: (item.description ?? '').replace(/<[^>]+>/g, '').trim().slice(0, 200),
-      score: 0,
-    }))
+  )
+
+  const seen = new Set<string>()
+  const mentions: Mention[] = []
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const item of result.value) {
+      const link: string = item.link ?? ''
+      if (seen.has(link)) continue
+      const dateStr: string = (item.pubDate ?? '').slice(0, 10)
+      if (!dateStr || dateStr < cutoff) continue
+      // rss2json includes full HTML content — use it for screener so we catch
+      // articles where "Circle Bridge Kit" appears in the body but not the title.
+      const combined = `${item.title ?? ''} ${item.description ?? ''} ${item.content ?? ''}`
+      if (!isCircleFinBlockchainContent(combined)) continue
+      seen.add(link)
+      mentions.push({
+        id: `md-${encodeURIComponent(link).slice(0, 80)}`,
+        platform: 'Medium',
+        title: item.title ?? '(no title)',
+        url: link || '#',
+        author: item.author ?? 'unknown',
+        date: dateStr,
+        sentiment: classifySentiment(`${item.title ?? ''} ${item.description ?? ''}`),
+        snippet: (item.description ?? '').replace(/<[^>]+>/g, '').trim().slice(0, 200),
+        score: 0,
+      })
+    }
+  }
+
+  return mentions.sort((a, b) => b.date.localeCompare(a.date))
 }
 
 // ─── Tavily Web Search (key-gated) ───────────────────────────────────────────
