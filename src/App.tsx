@@ -95,10 +95,19 @@ export default function App() {
 
   return (
     <div className="min-h-screen bg-[#0a0b0f] text-gray-100">
-      {/* Loading bar — visible while any source is fetching */}
+      {/* Full-screen loading overlay — blocks content until all sources resolve */}
       {isLoading && (
-        <div className="fixed top-0 left-0 right-0 z-50 h-0.5 bg-gray-800 overflow-hidden">
-          <div className="h-full bg-indigo-500 animate-[loading-bar_1.8s_ease-in-out_infinite]" />
+        <div className="loading-overlay">
+          <div className="loading-content">
+            <div className="loading-logo">
+              <Zap size={28} className="text-white" />
+            </div>
+            <p className="loading-title">Developer Kit Radar</p>
+            <p className="loading-subtitle">Fetching data across sources…</p>
+            <div className="loading-dots">
+              <span /><span /><span /><span /><span />
+            </div>
+          </div>
         </div>
       )}
       {/* Header */}
@@ -140,7 +149,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Mode toggle */}
+            {/* Mode toggle — Outreach hidden until feature is ready */}
             <div className="flex bg-gray-800 rounded-lg p-0.5 gap-0.5">
               <button
                 onClick={() => setMode('monitor')}
@@ -149,14 +158,6 @@ export default function App() {
                 }`}
               >
                 <Radio size={11} /> Monitor
-              </button>
-              <button
-                onClick={() => setMode('outreach')}
-                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
-                  mode === 'outreach' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
-                }`}
-              >
-                <Target size={11} /> Outreach
               </button>
             </div>
 
