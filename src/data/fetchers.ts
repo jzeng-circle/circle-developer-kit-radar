@@ -432,10 +432,17 @@ export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
   const results = await sequential(
     queries.map(q => () =>
       fetch(`https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=25&t=year`, { headers })
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error(`Reddit API ${r.status}`)
+          return r.json()
+        })
         .then(d => d.data?.children ?? [])
+        .catch(err => {
+          if (err instanceof TypeError) throw new Error('Reddit 429 — rate limit (CORS blocked response)')
+          throw err
+        })
     ),
-    1000
+    2000
   )
 
   const seen = new Set<string>()
@@ -512,17 +519,37 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
   const keyParam = key ? `&key=${key}` : ''
   const queries = queriesFor('Stack Overflow')
 
-  // &origin= is required for CORS when calling from a browser on a non-localhost domain
+  // &origin= is required for CORS when calling from a browser on a non-localhost domain.
+  // When SO returns 429 (rate limit) the response has no CORS headers, causing the browser
+  // to surface it as a CORS error rather than a 429. We catch that and re-throw with a
+  // clear message so the error badge shows the right description.
   const origin = typeof window !== 'undefined' ? encodeURIComponent(window.location.origin) : ''
   const originParam = origin ? `&origin=${origin}` : ''
 
+  // Only use the first (most specific) query to minimise daily quota usage.
+  // SO has a shared 300 req/day unauthenticated limit across all browser sessions.
+  const soQueries = queries.slice(0, 1)
+
   const results = await sequential(
-    queries.map(q => () =>
+    soQueries.map(q => () =>
       fetch(
         `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=creation&q=${encodeURIComponent(q)}&fromdate=${fromDate}&site=stackoverflow&pagesize=15${keyParam}${originParam}`
-      ).then(r => r.json()).then(d => d.items ?? [])
+      )
+        .then(r => {
+          if (!r.ok) throw new Error(`Stack Overflow API ${r.status}`)
+          return r.json()
+        })
+        .then(d => {
+          if (d.error_id === 502) throw new Error('Stack Overflow 429 — daily quota exceeded')
+          return d.items ?? []
+        })
+        .catch(err => {
+          // CORS errors (when SO returns 429 without CORS headers) surface as TypeError
+          if (err instanceof TypeError) throw new Error('Stack Overflow 429 — rate limit (CORS blocked response)')
+          throw err
+        })
     ),
-    2000
+    3000
   )
 
   const seen = new Set<string>()
@@ -922,7 +949,7 @@ export async function fetchOpportunities(
   // Process keywords sequentially to avoid overwhelming rate limits.
   // Within each keyword, HN (generous limits) runs in parallel; Reddit and SO are staggered.
   for (let kwIdx = 0; kwIdx < keywords.length; kwIdx++) {
-    if (kwIdx > 0) await sleep(1200) // gap between keywords
+    if (kwIdx > 0) await sleep(2000) // gap between keywords
     const kw = keywords[kwIdx]
     const q = kw.label
 
@@ -931,7 +958,10 @@ export async function fetchOpportunities(
         `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=15&t=year`,
         { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
       )
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error(`Reddit ${r.status}`)
+          return r.json()
+        })
         .then(d => {
           for (const child of d.data?.children ?? []) {
             const p = child.data
@@ -955,16 +985,20 @@ export async function fetchOpportunities(
             })
           }
         })
-        .catch(() => {})
+        .catch(_err => { /* rate-limited or CORS — skip this keyword's Reddit results */ })
 
-    await sleep(800)
+    await sleep(1200)
 
-    // Stack Overflow — 1 req per keyword, 800ms after Reddit
+    // Stack Overflow — 1 req per keyword, 1.2s after Reddit
     await fetch(
         `https://api.stackexchange.com/2.3/search/advanced?order=desc&sort=votes&q=${encodeURIComponent(q)}&fromdate=${soFromDate}&site=stackoverflow&pagesize=10${soKeyParam}&origin=${soOrigin}`
       )
-        .then(r => r.json())
+        .then(r => {
+          if (!r.ok) throw new Error(`SO ${r.status}`)
+          return r.json()
+        })
         .then(d => {
+          if (d.error_id === 502) return // quota exceeded
           for (const item of d.items ?? []) {
             const id = `so-${item.question_id}`
             if (seen.has(id)) continue
@@ -986,7 +1020,7 @@ export async function fetchOpportunities(
             })
           }
         })
-        .catch(() => {})
+        .catch(_err => { /* rate-limited or CORS — skip */ })
 
     // Hacker News — generous rate limits, fire immediately
     await fetch(
