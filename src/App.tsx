@@ -6,7 +6,6 @@ import PlatformChart from './components/PlatformChart'
 import NpmChart from './components/NpmChart'
 import MentionFeed from './components/MentionFeed'
 import TopRepos from './components/TopRepos'
-import SourceBadges from './components/SourceBadges'
 import SearchConfig from './components/SearchConfig'
 import OpportunityFeed from './components/OpportunityFeed'
 import { useData, ALL_SOURCES } from './data/useData'
@@ -216,7 +215,7 @@ export default function App() {
 
         {mode === 'monitor' && (
           <div className="max-w-screen-xl mx-auto px-6 pb-2">
-            <SourceBadges sources={data.sources} enabled={enabledSources} onToggle={toggleSource} />
+            <p className="text-xs text-gray-500">Tracks public developer activity to measure community awareness and adoption of Circle developer kits.</p>
           </div>
         )}
       </header>
@@ -224,7 +223,13 @@ export default function App() {
       <main className="max-w-screen-xl mx-auto px-6 py-6 space-y-5">
         {mode === 'monitor' ? (
           <>
-            <SearchConfig product={product} onApply={reload} />
+            <SearchConfig
+              product={product}
+              onApply={reload}
+              sources={data.sources}
+              enabled={enabledSources}
+              onToggle={toggleSource}
+            />
 
             <SummaryBar
               totalMentions={data.totalMentions}
