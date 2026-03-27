@@ -952,7 +952,6 @@ export async function fetchOpportunities(
           }
         })
         .catch(() => {})
-    )
 
     // GitHub Issues — stagger after HN
     if (!hasGhToken) await sleep(1500)
