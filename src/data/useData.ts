@@ -19,6 +19,7 @@ import {
   type Mention,
   type NpmDownload,
   type DailyCount,
+  type PlatformSummary,
 } from './mockData'
 import { type ProductConfig } from './searchConfig'
 
@@ -40,7 +41,7 @@ export interface DashboardData {
   mentions: Mention[]
   trendData: DailyCount[]
   npmData: NpmDownload[]
-  platformSummaries: { platform: string; total: number; change: number; color: string }[]
+  platformSummaries: PlatformSummary[]
   topRepos: { name: string; stars: number; description: string; url?: string }[]
   sentimentData: { name: string; value: number; color: string }[]
   totalMentions: number
