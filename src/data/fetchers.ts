@@ -38,9 +38,85 @@ function packagesFor(source: string): string[] {
 
 function githubHeaders(): HeadersInit {
   const token = import.meta.env.VITE_GITHUB_TOKEN
-  return token ? { Authorization: `Bearer ${token}`, 'User-Agent': 'bridge-kit-dashboard' } : {}
+  return token ? { Authorization: `Bearer ${token}`, 'User-Agent': 'circle-developer-kit-radar' } : {}
 }
 
+// ─── Content screener ────────────────────────────────────────────────────────
+//
+// Two-layer filter applied to every data point before it enters the pipeline:
+//
+//   Layer 1 — Blockchain/crypto context
+//     Confirms the content is about the blockchain/web3/stablecoin domain.
+//     Rejects generic uses of words like "bridge", "swap", or "kit" that have
+//     nothing to do with crypto (e.g. a bridge-building library, a design kit).
+//
+//   Layer 2 — Circle Fin affiliation
+//     Confirms the content refers to Circle Internet Financial, not another
+//     company or product that happens to use the word "circle" (e.g. design
+//     tools, social apps, family circle, payment processors unrelated to USDC).
+//
+// A data point passes only when BOTH layers return true, OR when it contains
+// a product-specific anchor (package name / exact product name) that uniquely
+// identifies Circle Fin — in that case the two-layer check is redundant.
+
+// Strong product-specific anchors — presence of any one is sufficient on its own.
+const PRODUCT_ANCHORS = [
+  '@circle-fin/',
+  'circle-fin/',
+  'circle bridge kit',
+  'circle app kit',
+  'circle swap kit',
+  'circlebridgekit',
+  'circleappkit',
+  'circleswapkit',
+]
+
+// Layer 1: blockchain/web3/stablecoin domain signals
+const BLOCKCHAIN_SIGNALS = [
+  'blockchain', 'web3', 'defi', 'stablecoin', 'usdc', 'eurc', 'usdt', 'dai',
+  'ethereum', 'solana', 'polygon', 'base', 'arbitrum', 'optimism', 'avalanche',
+  'on-chain', 'onchain', 'smart contract', 'evm', 'wallet', 'token', 'crypto',
+  'cctp', 'cross-chain', 'crosschain', 'multichain', 'l2', 'layer 2',
+  'dapp', 'protocol', 'liquidity', 'attestation', 'mint', 'burn',
+]
+
+// Layer 2: Circle Fin identity signals
+const CIRCLE_FIN_SIGNALS = [
+  'circle', 'circle.com', 'circle internet', 'circle financial',
+  'circlefin', 'circle-fin', '@circle-fin',
+  'circle developer', 'circle sdk', 'circle api', 'circle kit',
+  'circle wallet', 'circle programmable', 'circle infrastructure',
+]
+
+/**
+ * Returns true if the text is confirmed to be about blockchain content from
+ * Circle Internet Financial. Passes immediately on a strong product anchor.
+ * Otherwise requires both a blockchain signal AND a Circle Fin signal.
+ *
+ * Use for Monitor mode — every data point must be attributable to Circle Fin.
+ */
+function isCircleFinBlockchainContent(text: string): boolean {
+  const t = text.toLowerCase()
+
+  // Fast path: exact product anchor — unambiguously Circle Fin
+  if (PRODUCT_ANCHORS.some(anchor => t.includes(anchor))) return true
+
+  // Both layers must match
+  const hasBlockchain = BLOCKCHAIN_SIGNALS.some(s => t.includes(s))
+  const hasCircleFin  = CIRCLE_FIN_SIGNALS.some(s => t.includes(s))
+  return hasBlockchain && hasCircleFin
+}
+
+/**
+ * Blockchain-only screener for Outreach mode.
+ * Opportunity threads are from developers who haven't discovered Circle yet,
+ * so Circle Fin signals are intentionally absent. We still require blockchain
+ * context to reject completely off-topic results (e.g. a "USDC" coupon code).
+ */
+function isBlockchainContent(text: string): boolean {
+  const t = text.toLowerCase()
+  return BLOCKCHAIN_SIGNALS.some(s => t.includes(s))
+}
 
 // Returns true if the text contains at least one of the active product's terms
 function isRelevant(text: string): boolean {
@@ -113,6 +189,7 @@ export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
       if (isDependencyBump(item.title)) continue
       const combined = `${item.title} ${item.body ?? ''}`
       if (!isRelevant(combined)) continue
+      if (!isCircleFinBlockchainContent(combined)) continue
       // Client-side date filter — only include if within the selected range
       if (item.created_at.slice(0, 10) < cutoff) continue
       seen.add(String(item.id))
@@ -151,7 +228,7 @@ export async function fetchGitHubRepos() {
 export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
   const cutoff = Date.now() / 1000 - days * 86400
   const queries = queriesFor('Reddit')
-  const headers = { 'User-Agent': 'bridge-kit-dashboard/1.0' }
+  const headers = { 'User-Agent': 'circle-developer-kit-radar/1.0' }
 
   const results = await Promise.allSettled(
     queries.map(q =>
@@ -170,6 +247,7 @@ export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
       const p = child.data
       if (seen.has(p.id) || p.created_utc < cutoff) continue
       if (!isRelevantStrict(p.title, p.selftext ?? '')) continue
+      if (!isCircleFinBlockchainContent(`${p.title} ${p.selftext ?? ''}`)) continue
       seen.add(p.id)
       const combined = `${p.title} ${p.selftext ?? ''}`
       mentions.push({
@@ -195,7 +273,7 @@ export async function fetchDevToMentions(days = 30): Promise<Mention[]> {
   const cutoff = subDays(new Date(), days).toISOString()
   const query = queriesFor('Dev.to')[0] ?? '"Circle CCTP"'
   const res = await fetch(`https://dev.to/api/articles/search?q=${encodeURIComponent(query)}&per_page=20`, {
-    headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' },
+    headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' },
   })
   if (!res.ok) throw new Error(`Dev.to API ${res.status}`)
   const articles = await res.json()
@@ -204,7 +282,8 @@ export async function fetchDevToMentions(days = 30): Promise<Mention[]> {
     .filter((a: any) => {
       if (a.published_at < cutoff) return false
       // Dev.to search ignores quoted phrases — verify relevance client-side
-      return isRelevant(`${a.title} ${a.description ?? ''} ${a.tag_list?.join(' ') ?? ''}`)
+      const combined = `${a.title} ${a.description ?? ''} ${a.tag_list?.join(' ') ?? ''}`
+      return isRelevant(combined) && isCircleFinBlockchainContent(combined)
     })
     .map((a: any): Mention => ({
       id: `dt-${a.id}`,
@@ -243,6 +322,8 @@ export async function fetchStackOverflowMentions(days = 30): Promise<Mention[]> 
     if (result.status !== 'fulfilled') continue
     for (const item of result.value) {
       if (seen.has(String(item.question_id))) continue
+      const combined = `${item.title} ${item.tags?.join(' ') ?? ''}`
+      if (!isCircleFinBlockchainContent(combined)) continue
       seen.add(String(item.question_id))
       mentions.push({
         id: `so-${item.question_id}`,
@@ -336,6 +417,7 @@ export async function fetchGitHubCommits(days = 30): Promise<Mention[]> {
       const combined = message
       if (isDependencyBump(combined)) continue
       if (!isRelevant(combined)) continue
+      if (!isCircleFinBlockchainContent(combined)) continue
       const dateStr: string = (item.commit?.committer?.date ?? item.commit?.author?.date ?? '').slice(0, 10)
       if (!dateStr || dateStr < cutoff) continue
       seen.add(sha)
@@ -368,7 +450,7 @@ export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
     queries.map(q =>
       fetch(
         `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=30`,
-        { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } }
+        { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
       ).then(r => r.json()).then(d => d.hits ?? [])
     )
   )
@@ -381,8 +463,9 @@ export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
       if (!isRelevantStrict(item.title ?? '', item.url ?? '')) continue
       const dateStr: string = (item.created_at ?? '').slice(0, 10)
       if (!dateStr || dateStr < cutoff) continue
-      seen.add(id)
       const combined = `${item.title ?? ''} ${item.url ?? ''}`
+      if (!isCircleFinBlockchainContent(combined)) continue
+      seen.add(id)
       mentions.push({
         id: `hn-${id}`,
         platform: 'Hacker News',
@@ -410,7 +493,7 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
   const rssUrl = `https://medium.com/feed/tag/${encodeURIComponent(tag)}`
   const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
 
-  const res = await fetch(url, { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } })
+  const res = await fetch(url, { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } })
   if (!res.ok) return []
   const data = await res.json()
   if (data.status !== 'ok') return []
@@ -419,7 +502,8 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
     .filter((item: any) => {
       const dateStr: string = (item.pubDate ?? '').slice(0, 10)
       if (!dateStr || dateStr < cutoff) return false
-      return isRelevant(`${item.title ?? ''} ${item.description ?? ''} ${item.content ?? ''}`)
+      const combined = `${item.title ?? ''} ${item.description ?? ''} ${item.content ?? ''}`
+      return isRelevant(combined) && isCircleFinBlockchainContent(combined)
     })
     .map((item: any): Mention => ({
       id: `md-${encodeURIComponent(item.link ?? item.title ?? Math.random())}`,
@@ -470,7 +554,9 @@ export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
       if (seen.has(url)) continue
       const combined = `${item.title ?? ''} ${item.content ?? ''}`
       // Tavily already searched for the product query — skip isRelevant to avoid missing
-      // articles that use alternate spellings like "BridgeKit" or "Bridge Kit SDK"
+      // articles that use alternate spellings like "BridgeKit" or "Bridge Kit SDK".
+      // Still apply the domain screener to catch off-topic results.
+      if (!isCircleFinBlockchainContent(combined)) continue
       // Tavily returns published_date when available
       const dateStr = item.published_date
         ? item.published_date.slice(0, 10)
@@ -509,7 +595,9 @@ export async function fetchNewsArticles(days = 30): Promise<Mention[]> {
   if (!res.ok) return []
   const data = await res.json()
 
-  return (data.articles ?? []).map((a: any, i: number): Mention => ({
+  return (data.articles ?? [])
+    .filter((a: any) => isCircleFinBlockchainContent(`${a.title ?? ''} ${a.description ?? ''}`))
+    .map((a: any, i: number): Mention => ({
     id: `news-${i}`,
     platform: 'Web Articles',
     title: a.title,
@@ -591,7 +679,7 @@ export async function fetchOpportunities(
     fetches.push(
       fetch(
         `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=15&t=year`,
-        { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } }
+        { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
       )
         .then(r => r.json())
         .then(d => {
@@ -600,6 +688,7 @@ export async function fetchOpportunities(
             if (seen.has(`rd-${p.id}`)) continue
             if (p.created_utc < cutoffUnix) continue
             const combined = `${p.title} ${p.selftext ?? ''}`
+            if (!isBlockchainContent(combined)) continue
             if (isAlreadyAware(combined)) continue
             seen.add(`rd-${p.id}`)
             opportunities.push({
@@ -633,6 +722,7 @@ export async function fetchOpportunities(
             const id = `so-${item.question_id}`
             if (seen.has(id)) continue
             const combined = `${item.title} ${item.tags?.join(' ') ?? ''}`
+            if (!isBlockchainContent(combined)) continue
             if (isAlreadyAware(combined)) continue
             seen.add(id)
             opportunities.push({
@@ -656,7 +746,7 @@ export async function fetchOpportunities(
     fetches.push(
       fetch(
         `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=10`,
-        { headers: { 'User-Agent': 'bridge-kit-dashboard/1.0' } }
+        { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
       )
         .then(r => r.json())
         .then(d => {
@@ -666,6 +756,7 @@ export async function fetchOpportunities(
             const dateStr: string = (item.created_at ?? '').slice(0, 10)
             if (!dateStr || dateStr < cutoff) continue
             const combined = `${item.title ?? ''} ${item.url ?? ''}`
+            if (!isBlockchainContent(combined)) continue
             if (isAlreadyAware(combined)) continue
             seen.add(id)
             opportunities.push({
@@ -699,6 +790,7 @@ export async function fetchOpportunities(
             if (item.created_at.slice(0, 10) < cutoff) continue
             if (isDependencyBump(item.title)) continue
             const combined = `${item.title} ${item.body ?? ''}`
+            if (!isBlockchainContent(combined)) continue
             if (isAlreadyAware(combined)) continue
             seen.add(id)
             opportunities.push({
