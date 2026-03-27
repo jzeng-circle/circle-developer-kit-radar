@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { RefreshCw, Zap, ChevronDown, Check, Radio, Target, Calendar } from 'lucide-react'
+import { RefreshCw, Zap, ChevronDown, Check, Radio, Calendar } from 'lucide-react'
 import SummaryBar from './components/SummaryBar'
 import TrendChart from './components/TrendChart'
 import PlatformChart from './components/PlatformChart'
