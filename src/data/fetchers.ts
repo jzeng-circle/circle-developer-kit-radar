@@ -69,23 +69,47 @@ const PRODUCT_ANCHORS = [
   'circlebridgekit',
   'circleappkit',
   'circleswapkit',
+  // Hyphenated forms as they appear in repo names, topics, and descriptions
+  'circle-bridge-kit',
+  'circle-app-kit',
+  'circle-swap-kit',
+  // Possessive / prose forms ("Circle's Bridge Kit", "Circle's App Kit")
+  "circle's bridge kit",
+  "circle's app kit",
+  "circle's swap kit",
 ]
 
-// Layer 1: blockchain/web3/stablecoin domain signals
+// Layer 1: blockchain/web3/stablecoin domain signals.
+// Rules: no bare common English words — every term must be specific enough
+// that it cannot appear in unrelated content.
+// Removed: 'base' (matches "baseball", "database"), 'token' (too generic),
+//          'wallet' (generic), 'protocol' (generic), 'mint' (NFT art sites),
+//          'burn' (fitness/cooking), 'dai' (Japanese word / name)
 const BLOCKCHAIN_SIGNALS = [
-  'blockchain', 'web3', 'defi', 'stablecoin', 'usdc', 'eurc', 'usdt', 'dai',
-  'ethereum', 'solana', 'polygon', 'base', 'arbitrum', 'optimism', 'avalanche',
-  'on-chain', 'onchain', 'smart contract', 'evm', 'wallet', 'token', 'crypto',
-  'cctp', 'cross-chain', 'crosschain', 'multichain', 'l2', 'layer 2',
-  'dapp', 'protocol', 'liquidity', 'attestation', 'mint', 'burn',
+  'blockchain', 'web3', 'defi', 'stablecoin',
+  'usdc', 'eurc', 'usdt',
+  'ethereum', 'solana', 'polygon', 'arbitrum', 'optimism', 'avalanche',
+  'base chain', 'base network', 'base mainnet', 'base testnet',  // "Base" the L2, not the word
+  'on-chain', 'onchain', 'smart contract', 'evm',
+  'crypto wallet', 'web3 wallet', 'blockchain wallet',
+  'crypto token', 'erc20', 'erc-20',
+  'cctp', 'cross-chain', 'crosschain', 'multichain', 'layer 2', 'l2 network',
+  'dapp', 'decentralized', 'liquidity pool', 'attestation service',
+  'nft', 'gas fee', 'rpc', 'testnet', 'mainnet', 'sepolia', 'goerli',
 ]
 
-// Layer 2: Circle Fin identity signals
+// Layer 2: Circle Fin identity signals.
+// Rules: 'circle' alone is NOT valid — it matches circles in geometry, sports,
+// social groups, etc. Every signal must be a multi-word phrase or a technical
+// identifier that uniquely points to Circle Internet Financial.
 const CIRCLE_FIN_SIGNALS = [
-  'circle', 'circle.com', 'circle internet', 'circle financial',
+  'circle.com',
+  'circle internet', 'circle financial',
   'circlefin', 'circle-fin', '@circle-fin',
   'circle developer', 'circle sdk', 'circle api', 'circle kit',
-  'circle wallet', 'circle programmable', 'circle infrastructure',
+  'circle programmable', 'circle infrastructure',
+  'circle usdc', 'circle stablecoin', 'circle wallet',
+  'circle bridge', 'circle swap', 'circle app kit',
 ]
 
 /**
@@ -209,18 +233,115 @@ export async function fetchGitHubMentions(days = 30): Promise<Mention[]> {
   return mentions
 }
 
+// Scan all package.json files in a repo (excluding node_modules) and return
+// every unique @circle-fin/* package listed in any dependency field.
+// Handles both single-package repos and monorepos with nested packages.
+async function fetchCircleKitsFromPackageJson(fullName: string): Promise<string[]> {
+  try {
+    // Step 1: get the full repo tree to find every package.json path
+    const treeRes = await fetch(
+      `https://api.github.com/repos/${fullName}/git/trees/HEAD?recursive=1`,
+      { headers: githubHeaders() }
+    )
+    if (!treeRes.ok) return []
+    const tree = await treeRes.json()
+    const packageJsonPaths: string[] = (tree.tree ?? [])
+      .filter((f: any) => f.type === 'blob' && f.path.endsWith('package.json') && !f.path.includes('node_modules'))
+      .map((f: any) => f.path)
+
+    if (packageJsonPaths.length === 0) return []
+
+    // Step 2: fetch and parse each package.json, collect @circle-fin/* deps
+    const kitSet = new Set<string>()
+    await Promise.allSettled(
+      packageJsonPaths.map(async path => {
+        const res = await fetch(
+          `https://api.github.com/repos/${fullName}/contents/${path}`,
+          { headers: githubHeaders() }
+        )
+        if (!res.ok) return
+        const data = await res.json()
+        const content = atob(data.content.replace(/\n/g, ''))
+        const pkg = JSON.parse(content)
+        const allDeps = { ...pkg.dependencies, ...pkg.devDependencies, ...pkg.peerDependencies }
+        Object.keys(allDeps)
+          .filter(dep => dep.startsWith('@circle-fin/'))
+          .forEach(dep => kitSet.add(dep))
+      })
+    )
+
+    return [...kitSet].sort()
+  } catch {
+    return []
+  }
+}
+
 export async function fetchGitHubRepos() {
-  const query = queriesFor('GitHub Repos')[0] ?? 'circlefin cctp'
-  const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(query)}&sort=stars&order=desc&per_page=8`
-  const res = await fetch(url, { headers: githubHeaders() })
-  if (!res.ok) throw new Error(`GitHub repos API ${res.status}`)
-  const data = await res.json()
-  return (data.items ?? []).map((r: any) => ({
-    name: r.full_name,
-    stars: r.stargazers_count,
-    description: r.description ?? '',
-    url: r.html_url,
-  }))
+  const queries = queriesFor('GitHub Repos')
+  if (queries.length === 0) return []
+
+  const seen = new Set<string>()
+  const candidates: { full_name: string; stars: number; description: string; html_url: string }[] = []
+
+  // Step 1: collect candidates that pass the anchor check
+  const results = await Promise.allSettled(
+    queries.map(q => {
+      const url = `https://api.github.com/search/repositories?q=${encodeURIComponent(q)}&sort=stars&order=desc&per_page=10`
+      return fetch(url, { headers: githubHeaders() }).then(r => r.json()).then(d => d.items ?? [])
+    })
+  )
+
+  for (const result of results) {
+    if (result.status !== 'fulfilled') continue
+    for (const r of result.value) {
+      if (seen.has(r.full_name)) continue
+      // Require a product anchor in name, description, or topics — rejects repos
+      // that only incidentally contain "circle" + a blockchain term.
+      const combined = `${r.full_name} ${r.description ?? ''} ${(r.topics ?? []).join(' ')}`
+      const hasAnchor = PRODUCT_ANCHORS.some(anchor => combined.toLowerCase().includes(anchor))
+      if (!hasAnchor) continue
+      seen.add(r.full_name)
+      candidates.push({
+        full_name: r.full_name,
+        stars: r.stargazers_count,
+        description: r.description ?? '',
+        html_url: r.html_url,
+      })
+    }
+  }
+
+  // Step 2: verify each candidate by fetching its package.json — ground truth.
+  // Only keep repos that actually declare at least one of this product's packages
+  // as a dependency. This prevents e.g. a Bridge Kit repo from appearing under
+  // Swap Kit just because the search query loosely matched its repo name.
+  const activePackages = packagesFor('npm')  // e.g. ['@circle-fin/bridge-kit']
+
+  const verified = await Promise.allSettled(
+    candidates.map(async c => {
+      const kits = await fetchCircleKitsFromPackageJson(c.full_name)
+      return { ...c, kits }
+    })
+  )
+
+  const repos = verified
+    .filter(r => {
+      if (r.status !== 'fulfilled') return false
+      const { kits } = r.value
+      // Must have at least one @circle-fin package AND it must match this product
+      if (kits.length === 0) return false
+      if (activePackages.length === 0) return true  // no product filter available, accept any kit
+      return activePackages.some(pkg => kits.includes(pkg))
+    })
+    .map(r => (r as PromiseFulfilledResult<typeof candidates[0] & { kits: string[] }>).value)
+    .map(r => ({
+      name: r.full_name,
+      stars: r.stars,
+      description: r.description,
+      url: r.html_url,
+      kits: r.kits,
+    }))
+
+  return repos.sort((a, b) => b.stars - a.stars).slice(0, 8)
 }
 
 // ─── Reddit ──────────────────────────────────────────────────────────────────

@@ -61,8 +61,8 @@ const BRIDGE_KIT_CONFIG: SourceConfig[] = [
     queries: [
       {
         id: 'ghr-1',
-        label: 'circle-fin bridge-kit',
-        note: 'Repos that reference the Circle Bridge Kit package',
+        label: 'circle-bridge-kit',
+        note: 'Repos referencing Circle Bridge Kit by package/name — avoids generic "bridge-kit" noise',
       },
     ],
   },
@@ -189,7 +189,7 @@ const APP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'GitHub Repos',
     queries: [
-      { id: 'ghr-1', label: 'circle-fin app-kit', note: 'Repos referencing the Circle App Kit package' },
+      { id: 'ghr-1', label: 'circle-app-kit', note: 'Repos referencing Circle App Kit by package/name — avoids generic noise' },
     ],
   },
   {
@@ -265,7 +265,7 @@ const SWAP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'GitHub Repos',
     queries: [
-      { id: 'ghr-1', label: 'circle-fin swap-kit', note: 'Repos referencing the Circle Swap Kit package' },
+      { id: 'ghr-1', label: 'circle-swap-kit', note: 'Repos referencing Circle Swap Kit by package/name — avoids generic noise' },
     ],
   },
   {
