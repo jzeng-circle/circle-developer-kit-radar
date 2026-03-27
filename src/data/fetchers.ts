@@ -180,8 +180,10 @@ function isDependencyBump(title: string): boolean {
 
 function classifySentiment(text: string): 'positive' | 'neutral' | 'negative' {
   const t = text.toLowerCase()
-  const pos = ['great', 'awesome', 'love', 'works', 'solved', 'easy', 'fast', 'seamless', 'perfect', 'excellent', 'nice', 'underrated', 'game changer', 'recommend']
-  const neg = ['broken', 'bug', 'fail', 'error', 'issue', 'problem', 'not working', 'doesnt work', "doesn't work", 'wrong', 'bad', 'slow', 'confusing', 'frustrated', 'timeout']
+  const pos = ['great', 'awesome', 'love', 'works perfectly', 'solved', 'easy to use', 'seamless', 'perfect', 'excellent', 'underrated', 'game changer', 'highly recommend', 'works great', 'super easy', 'love this']
+  // Negative signals require stronger phrasing — avoid flagging press releases that say
+  // "solves the problem of X" or "without the issue of wrapped tokens" as negative.
+  const neg = ['broken', 'bug ', 'buggy', 'fails to', 'not working', 'doesnt work', "doesn't work", 'keeps failing', 'frustrating', 'timed out', 'throws an error', 'getting an error', 'stuck on', 'cannot figure out', 'completely broken']
   const posScore = pos.filter(w => t.includes(w)).length
   const negScore = neg.filter(w => t.includes(w)).length
   if (posScore > negScore) return 'positive'
