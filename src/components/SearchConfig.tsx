@@ -3,7 +3,7 @@ import { ChevronDown, ChevronRight, Search, Package, Plus, Trash2, Check, X, Pen
 import { type SourceConfig, type QueryDef, type ProductConfig } from '../data/searchConfig'
 import { setSearchConfig } from '../data/fetchers'
 import SourceBadges from './SourceBadges'
-import type { SourceStatuses } from '../data/useData'
+import type { SourceStatuses, SourceErrors } from '../data/useData'
 
 interface Props {
   product: ProductConfig
@@ -11,9 +11,10 @@ interface Props {
   sources: SourceStatuses
   enabled: Set<keyof SourceStatuses>
   onToggle: (key: keyof SourceStatuses) => void
+  sourceErrors?: SourceErrors
 }
 
-export default function SearchConfig({ product, onApply, sources, enabled, onToggle }: Props) {
+export default function SearchConfig({ product, onApply, sources, enabled, onToggle, sourceErrors }: Props) {
   const [open, setOpen] = useState(false)
   const [config, setConfig] = useState<SourceConfig[]>(() =>
     JSON.parse(JSON.stringify(product.searchConfig)) // deep clone
@@ -144,7 +145,7 @@ export default function SearchConfig({ product, onApply, sources, enabled, onTog
 
       {/* Row 2: source badges */}
       <div className="px-4 pb-3 bg-gray-900/60 border-t border-gray-800/60" onClick={e => e.stopPropagation()}>
-        <SourceBadges sources={sources} enabled={enabled} onToggle={onToggle} />
+        <SourceBadges sources={sources} enabled={enabled} onToggle={onToggle} sourceErrors={sourceErrors} />
       </div>
 
       {/* Expanded content */}

@@ -237,6 +237,7 @@ export default function App() {
               sources={data.sources}
               enabled={enabledSources}
               onToggle={toggleSource}
+              sourceErrors={data.sourceErrors}
             />
 
             <SummaryBar

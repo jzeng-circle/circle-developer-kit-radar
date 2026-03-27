@@ -37,6 +37,8 @@ export interface SourceStatuses {
   webarticles: SourceStatus
 }
 
+export type SourceErrors = Partial<Record<keyof SourceStatuses, string>>
+
 export interface DashboardData {
   mentions: Mention[]
   trendData: DailyCount[]
@@ -49,7 +51,21 @@ export interface DashboardData {
   npmDownloads: number
   npmChange: number
   sources: SourceStatuses
+  sourceErrors: SourceErrors
   lastRefreshed: Date | null
+}
+
+function summariseError(reason: unknown): string {
+  if (!reason) return 'Unknown error'
+  const msg = reason instanceof Error ? reason.message : String(reason)
+  if (/403/.test(msg) || /rate limit/i.test(msg)) return 'Rate limit hit (403) — too many requests. Add a token or wait a minute.'
+  if (/429/.test(msg)) return 'Too many requests (429) — API rate limit exceeded.'
+  if (/CORS/i.test(msg) || /ERR_FAILED/.test(msg)) return 'CORS error — API blocked cross-origin requests from this domain.'
+  if (/401/.test(msg)) return 'Unauthorized (401) — invalid or missing API token.'
+  if (/404/.test(msg)) return 'Not found (404) — endpoint or resource does not exist.'
+  if (/5\d\d/.test(msg)) return `Server error — the API returned ${msg.match(/5\d\d/)?.[0] ?? '5xx'}.`
+  if (/network/i.test(msg) || /Failed to fetch/i.test(msg)) return 'Network error — check internet connection or CORS policy.'
+  return msg.slice(0, 120)
 }
 
 const PRESET_DAYS: Record<string, number> = { '7d': 7, '30d': 30, '90d': 90, '180d': 180, '1y': 365 }
@@ -89,6 +105,7 @@ export function useData(range: string, product: ProductConfig, enabledSources: S
     npmDownloads: 0,
     npmChange: 0,
     sources: { github: 'loading', reddit: 'loading', devto: 'loading', stackoverflow: 'loading', npm: 'loading', news: 'loading', hackernews: 'loading', medium: 'loading', webarticles: 'loading' },
+    sourceErrors: {},
     lastRefreshed: null,
   }))
 
@@ -100,6 +117,7 @@ export function useData(range: string, product: ProductConfig, enabledSources: S
     setData(prev => ({
       ...prev,
       sources: { github: 'loading', reddit: 'loading', devto: 'loading', stackoverflow: 'loading', npm: 'loading', news: 'loading', hackernews: 'loading', medium: 'loading', webarticles: 'loading' },
+      sourceErrors: {},
     }))
 
     const on = enabledSources
@@ -124,81 +142,49 @@ export function useData(range: string, product: ProductConfig, enabledSources: S
     // Merge live mention results
     const liveMentions: Mention[] = []
     const sources: SourceStatuses = { github: 'none', reddit: 'none', devto: 'none', stackoverflow: 'none', npm: 'none', news: 'none', hackernews: 'none', medium: 'none', webarticles: 'none' }
+    const sourceErrors: SourceErrors = {}
 
-    if (ghResult.status === 'fulfilled' && ghResult.value.length > 0) {
-      liveMentions.push(...ghResult.value)
-      sources.github = 'live'
-    } else {
-      sources.github = ghResult.status === 'rejected' ? 'error' : 'none'
+    function applyResult<T extends Mention[]>(
+      result: PromiseSettledResult<T>,
+      key: keyof SourceStatuses,
+      onSuccess: (v: T) => void
+    ) {
+      if (result.status === 'fulfilled') {
+        if (result.value.length > 0) { onSuccess(result.value); sources[key] = 'live' }
+        // else stays 'none'
+      } else {
+        sources[key] = 'error'
+        sourceErrors[key] = summariseError(result.reason)
+      }
     }
 
-    // GitHub Commits — merged into github source status (same badge)
+    applyResult(ghResult, 'github', v => liveMentions.push(...v))
+
+    // GitHub Commits — merged into github badge
     if (ghCommitsResult.status === 'fulfilled' && ghCommitsResult.value.length > 0) {
       liveMentions.push(...ghCommitsResult.value)
       sources.github = 'live'
+    } else if (ghCommitsResult.status === 'rejected' && sources.github !== 'live') {
+      sources.github = 'error'
+      sourceErrors.github = summariseError(ghCommitsResult.reason)
     }
 
-    if (rdResult.status === 'fulfilled' && rdResult.value.length > 0) {
-      liveMentions.push(...rdResult.value)
-      sources.reddit = 'live'
-    } else {
-      sources.reddit = rdResult.status === 'rejected' ? 'error' : 'none'
-    }
-
-    if (dtResult.status === 'fulfilled' && dtResult.value.length > 0) {
-      liveMentions.push(...dtResult.value)
-      sources.devto = 'live'
-    } else {
-      sources.devto = dtResult.status === 'rejected' ? 'error' : 'none'
-    }
-
-    // Stack Overflow — no mock fallback: product is new, zero real results is the truth
-    if (soResult.status === 'fulfilled' && soResult.value.length > 0) {
-      liveMentions.push(...soResult.value)
-      sources.stackoverflow = 'live'
-    } else {
-      sources.stackoverflow = soResult.status === 'rejected' ? 'error' : 'none'
-    }
-
-    // News / Web Articles — key-gated; show 'none' rather than injecting mock articles with broken URLs
-    if (newsResult.status === 'fulfilled' && newsResult.value.length > 0) {
-      liveMentions.push(...newsResult.value)
-      sources.news = 'live'
-    } else {
-      sources.news = newsResult.status === 'rejected' ? 'error' : 'none'
-    }
-
-    // Google CSE — key-gated; catches Binance Square, blogs, press releases
-    if (cseResult.status === 'fulfilled' && cseResult.value.length > 0) {
-      liveMentions.push(...cseResult.value)
-      sources.webarticles = 'live'
-    } else {
-      sources.webarticles = cseResult.status === 'rejected' ? 'error' : 'none'
-    }
-
-    // Hacker News — Algolia API, no key required
-    if (hnResult.status === 'fulfilled' && hnResult.value.length > 0) {
-      liveMentions.push(...hnResult.value)
-      sources.hackernews = 'live'
-    } else {
-      sources.hackernews = hnResult.status === 'rejected' ? 'error' : 'none'
-    }
-
-    // Medium — tag RSS via proxy; 0 results expected for new products
-    if (mdResult.status === 'fulfilled' && mdResult.value.length > 0) {
-      liveMentions.push(...mdResult.value)
-      sources.medium = 'live'
-    } else {
-      sources.medium = mdResult.status === 'rejected' ? 'error' : 'none'
-    }
+    applyResult(rdResult, 'reddit', v => liveMentions.push(...v))
+    applyResult(dtResult, 'devto', v => liveMentions.push(...v))
+    applyResult(soResult, 'stackoverflow', v => liveMentions.push(...v))
+    applyResult(newsResult, 'news', v => liveMentions.push(...v))
+    applyResult(cseResult, 'webarticles', v => liveMentions.push(...v))
+    applyResult(hnResult, 'hackernews', v => liveMentions.push(...v))
+    applyResult(mdResult, 'medium', v => liveMentions.push(...v))
 
     // npm downloads
     let npmData: NpmDownload[] = []
     if (npmResult.status === 'fulfilled' && npmResult.value.length > 0) {
       npmData = npmResult.value
       sources.npm = 'live'
-    } else {
-      sources.npm = npmResult.status === 'rejected' ? 'error' : 'none'
+    } else if (npmResult.status === 'rejected') {
+      sources.npm = 'error'
+      sourceErrors.npm = summariseError(npmResult.reason)
     }
 
     // Top repos
@@ -234,6 +220,7 @@ export function useData(range: string, product: ProductConfig, enabledSources: S
       npmDownloads,
       npmChange,
       sources,
+      sourceErrors,
       lastRefreshed: new Date(),
     })
   }, [days, product, enabledSources])
