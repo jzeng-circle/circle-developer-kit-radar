@@ -134,7 +134,7 @@ export default function MentionFeed({ mentions, isLoading }: Props) {
                     <SentIcon size={10} />
                     {sentiment.label}
                   </span>
-                  <span className="text-xs text-gray-500">{mention.date}</span>
+                  {mention.date && <span className="text-xs text-gray-500">{mention.date}</span>}
                 </div>
               </div>
 

@@ -847,11 +847,15 @@ export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
       // articles that use alternate spellings like "BridgeKit" or "Bridge Kit SDK".
       // Still apply the domain screener to catch off-topic results.
       if (!isCircleFinBlockchainContent(combined)) continue
-      // Tavily returns published_date when available
-      const dateStr = item.published_date
-        ? item.published_date.slice(0, 10)
-        : format(new Date(), 'yyyy-MM-dd')
-      if (dateStr < cutoff) continue
+      // Tavily returns published_date when available; fall back to date in URL path
+      // (e.g. crypto.news/2025/10/14/...) rather than faking today's date.
+      let dateStr: string = item.published_date ? item.published_date.slice(0, 10) : ''
+      if (!dateStr) {
+        const m = url.match(/\/(20\d\d)[\/\-](0[1-9]|1[0-2])[\/\-](0[1-9]|[12]\d|3[01])/)
+        if (m) dateStr = `${m[1]}-${m[2]}-${m[3]}`
+      }
+      // Only apply date filter when we have a reliable date; unknown-date articles pass through
+      if (dateStr && dateStr < cutoff) continue
       seen.add(url)
       const platform = platformFromUrl(url)
       mentions.push({
