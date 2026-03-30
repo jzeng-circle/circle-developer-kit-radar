@@ -1,4 +1,4 @@
-# Circle Dev Product Engagement Radar
+# Circle Developer Kit Radar
 
 ## Background
 
@@ -8,7 +8,7 @@ Developers discover SDKs through many channels: GitHub repositories and issues, 
 
 ## Objective
 
-Circle Dev Product Engagement Radar aggregates public developer activity across the internet to answer a single question: **how visible are Circle's developer kits in the developer community?**
+Circle Developer Kit Radar aggregates public developer activity across the internet to answer a single question: **how visible are Circle's developer kits in the developer community?**
 
 The dashboard pulls live data from public APIs — no scraping, no proprietary data — and compiles it into a single view that shows:
 
@@ -72,7 +72,7 @@ The dashboard works out of the box without any API keys. Keys unlock NewsAPI and
 ### Install dependencies
 
 ```bash
-cd circle-dev-product-engagement-radar
+cd circle-developer-kit-radar
 npm install
 ```
 
