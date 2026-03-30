@@ -1,5 +1,7 @@
 # Circle Developer Kit Radar
 
+**Live dashboard:** https://jzeng-circle.github.io/circle-developer-kit-radar/
+
 ## Background
 
 Circle's developer kits — Bridge Kit, App Kit, and Swap Kit — are purpose-built SDKs that simplify stablecoin operations for developers building on-chain applications. As these products grow, a key question emerges: **how much organic presence do they have across the public internet?**
