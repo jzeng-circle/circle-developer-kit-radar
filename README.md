@@ -21,6 +21,21 @@ The dashboard pulls live data from public APIs — no scraping, no proprietary d
 
 A second mode, **Outreach**, surfaces developer threads where someone has the exact problem a kit solves but has not yet discovered the product — enabling targeted, high-signal developer outreach.
 
+## Methodology
+
+The radar works in three stages:
+
+**1. Define product keywords**
+Each product has a set of search queries — exact phrases, package names, and related terms — configured per source. For example, Bridge Kit searches for `"Bridge Kit" circle`, `@circle-fin/bridge-kit`, `CCTP bridge circle`, and similar variants. These queries are editable in the dashboard under the Search Keywords panel, so you can tune what counts as a relevant mention without touching code.
+
+**2. Search public sources**
+Queries run in parallel across all enabled sources using their public APIs. Each source is searched independently: GitHub scans issues and commits, Reddit and Hacker News search post titles and bodies, Dev.to and Medium search articles, Stack Overflow searches questions, NewsAPI searches news headlines, and Google CSE sweeps broader web content. Requests are rate-limited and sequenced per API to stay within free-tier quotas. Results are cached in-session for one hour to avoid redundant calls.
+
+**3. Compile and score results**
+Raw results are filtered for relevance — posts that mention the query string but have no meaningful connection to the product are dropped. Remaining mentions are deduplicated, sorted by date, and tagged with a platform and sentiment label (positive / neutral / negative) based on the surrounding language. The dashboard then aggregates these into counts, trends, platform breakdowns, and sentiment distributions.
+
+---
+
 ## Products Tracked
 
 | Product | npm Package |
@@ -103,8 +118,8 @@ npm run preview
 
 **Select a time range** using the preset buttons (7d, 30d, 90d, 180d, 1y) or pick a custom start date. The earliest meaningful date is 2025-10-14 (Bridge Kit publish date).
 
-**Monitor mode** shows mention volume, trend charts, platform breakdown, sentiment, npm downloads, and top repos. Each data source displays a status badge — green for live data, grey for no results, red for an API error.
+**Monitor mode** answers the question: *how visible is this product in the developer community?* It pulls live mentions across all sources, aggregates them into trend charts, platform breakdowns, sentiment scores, and npm download curves, and shows top public repos using the kit. Use this to track whether community awareness is growing, flat, or declining over a chosen time range.
 
-**Outreach mode** searches for public threads where developers are dealing with a problem the kit solves, but have not mentioned the product. Results are filterable by problem keyword. Each result includes a "Why?" toggle explaining the relevance signal.
+**Outreach mode** answers a different question: *who needs this product but hasn't found it yet?* It searches developer forums and Q&A sites for threads where someone describes the exact problem a kit solves — cross-chain transfers, stablecoin bridging, on-chain payments — but hasn't mentioned Circle's products. Each result includes a "Why?" explanation of the relevance signal, making it easy to identify high-signal moments for targeted developer outreach.
 
 **Refresh** the data at any time using the refresh button in the header.

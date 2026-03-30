@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { RefreshCw, Zap, ChevronDown, Check, Radio, Calendar } from 'lucide-react'
+import { RefreshCw, Zap, ChevronDown, Check, Radio, Target, Calendar } from 'lucide-react'
 import SummaryBar from './components/SummaryBar'
 import TrendChart from './components/TrendChart'
 import PlatformChart from './components/PlatformChart'
@@ -148,7 +148,7 @@ export default function App() {
           </div>
 
           <div className="flex items-center gap-3">
-            {/* Mode toggle — Outreach hidden until feature is ready */}
+            {/* Mode toggle */}
             <div className="flex bg-gray-800 rounded-lg p-0.5 gap-0.5">
               <button
                 onClick={() => setMode('monitor')}
@@ -157,6 +157,14 @@ export default function App() {
                 }`}
               >
                 <Radio size={11} /> Monitor
+              </button>
+              <button
+                onClick={() => setMode('outreach')}
+                className={`flex items-center gap-1.5 px-3 py-1.5 rounded-md text-xs font-medium transition-colors ${
+                  mode === 'outreach' ? 'bg-indigo-600 text-white' : 'text-gray-400 hover:text-gray-200'
+                }`}
+              >
+                <Target size={11} /> Outreach
               </button>
             </div>
 
@@ -213,11 +221,13 @@ export default function App() {
           </div>
         </div>
 
-        {mode === 'monitor' && (
-          <div className="max-w-screen-xl mx-auto px-6 pb-2">
-            <p className="text-xs text-gray-500">Tracks public developer activity to measure community awareness and adoption of Circle developer kits.</p>
-          </div>
-        )}
+        <div className="max-w-screen-xl mx-auto px-6 pb-2">
+          <p className="text-xs text-gray-500">
+            {mode === 'monitor'
+              ? 'Tracks public developer activity to measure community awareness and adoption of Circle developer kits.'
+              : 'Surfaces developer threads where someone has the exact problem a kit solves but has not yet discovered the product — enabling targeted, high-signal outreach.'}
+          </p>
+        </div>
       </header>
 
       <main className="max-w-screen-xl mx-auto px-6 py-6 space-y-5">
