@@ -101,7 +101,7 @@ export default function App() {
             <div className="loading-logo">
               <Zap size={28} className="text-white" />
             </div>
-            <p className="loading-title">Developer Kit Radar</p>
+            <p className="loading-title">Dev Product Engagement Radar</p>
             <p className="loading-subtitle">Fetching data across sources…</p>
             <div className="loading-dots">
               <span /><span /><span /><span /><span />
@@ -117,7 +117,7 @@ export default function App() {
               <Zap size={14} className="text-white" />
             </div>
             <div>
-              <p className="text-xs text-gray-500 leading-none mb-1">Developer Kit Radar</p>
+              <p className="text-xs text-gray-500 leading-none mb-1">Dev Product Engagement Radar</p>
               {/* Product dropdown */}
               <div className="relative" ref={dropdownRef}>
                 <button

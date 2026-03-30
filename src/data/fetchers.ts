@@ -78,7 +78,7 @@ function packagesFor(source: string): string[] {
 
 function githubHeaders(): HeadersInit {
   const token = import.meta.env.VITE_GITHUB_TOKEN
-  return token ? { Authorization: `Bearer ${token}`, 'User-Agent': 'circle-developer-kit-radar' } : {}
+  return token ? { Authorization: `Bearer ${token}`, 'User-Agent': 'circle-dev-product-engagement-radar' } : {}
 }
 
 const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms))
@@ -433,7 +433,7 @@ export async function fetchRedditMentions(days = 30): Promise<Mention[]> {
   const cached = fromCache<Mention[]>(key); if (cached) return cached
   const cutoff = Date.now() / 1000 - days * 86400
   const queries = queriesFor('Reddit')
-  const headers = { 'User-Agent': 'circle-developer-kit-radar/1.0' }
+  const headers = { 'User-Agent': 'circle-dev-product-engagement-radar/1.0' }
 
   const { results, firstError } = await sequential(
     queries.map(q => () =>
@@ -489,7 +489,7 @@ export async function fetchDevToMentions(days = 30): Promise<Mention[]> {
   const cutoff = subDays(new Date(), days).toISOString()
   const query = queriesFor('Dev.to')[0] ?? '"Circle CCTP"'
   const res = await fetch(`https://dev.to/api/articles/search?q=${encodeURIComponent(query)}&per_page=20`, {
-    headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' },
+    headers: { 'User-Agent': 'circle-dev-product-engagement-radar/1.0' },
   })
   if (!res.ok) throw new Error(`Dev.to API ${res.status}`)
   const articles = await res.json()
@@ -704,7 +704,7 @@ export async function fetchHackerNewsMentions(days = 30): Promise<Mention[]> {
     queries.map(q =>
       fetch(
         `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=30`,
-        { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
+        { headers: { 'User-Agent': 'circle-dev-product-engagement-radar/1.0' } }
       ).then(r => r.json()).then(d => d.hits ?? [])
     )
   )
@@ -756,7 +756,7 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
     allTags.map(tag => {
       const rssUrl = `https://medium.com/feed/tag/${encodeURIComponent(tag)}`
       const url = `https://api.rss2json.com/v1/api.json?rss_url=${encodeURIComponent(rssUrl)}`
-      return fetch(url, { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } })
+      return fetch(url, { headers: { 'User-Agent': 'circle-dev-product-engagement-radar/1.0' } })
         .then(r => {
           if (!r.ok) throw new Error(`rss2json HTTP ${r.status}`)
           return r.json()
@@ -978,7 +978,7 @@ export async function fetchOpportunities(
     // Reddit — 1 req per keyword
     await fetch(
         `https://www.reddit.com/search.json?q=${encodeURIComponent(q)}&sort=new&limit=15&t=year`,
-        { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
+        { headers: { 'User-Agent': 'circle-dev-product-engagement-radar/1.0' } }
       )
         .then(r => {
           if (!r.ok) throw new Error(`Reddit ${r.status}`)
@@ -1047,7 +1047,7 @@ export async function fetchOpportunities(
     // Hacker News — generous rate limits, fire immediately
     await fetch(
         `https://hn.algolia.com/api/v1/search?query=${encodeURIComponent(q)}&tags=story&hitsPerPage=10`,
-        { headers: { 'User-Agent': 'circle-developer-kit-radar/1.0' } }
+        { headers: { 'User-Agent': 'circle-dev-product-engagement-radar/1.0' } }
       )
         .then(r => r.json())
         .then(d => {
