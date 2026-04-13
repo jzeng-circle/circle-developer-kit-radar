@@ -862,13 +862,25 @@ export async function fetchMediumMentions(days = 30): Promise<Mention[]> {
   return toCache(key, mentions.sort((a, b) => b.date.localeCompare(a.date)))
 }
 
-// ─── Tavily Web Search (key-gated) ───────────────────────────────────────────
-// Catches web articles, Binance Square, Medium, Mirror.xyz, blogs, press releases.
-// Requires VITE_TAVILY_KEY. Free tier: 1000 searches/month.
+// ─── Web Article Search (Tavily + Google CSE) ────────────────────────────────
+// Two complementary engines run in parallel and results are merged:
+//
+//   Tavily  — VITE_TAVILY_KEY    — fast, good for crypto/tech sites
+//   Google CSE — VITE_GOOGLE_CSE_KEY + VITE_GOOGLE_CSE_ID
+//             — Google's full index; catches regional aggregators (dailyhunt.in,
+//               cryptorank.io, etc.) that Tavily doesn't crawl
+//
+// Either key alone is sufficient — whichever is absent is silently skipped.
 
 export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
-  const apiKey = import.meta.env.VITE_TAVILY_KEY
-  if (!apiKey) throw new Error('VITE_TAVILY_KEY not configured — add it as a GitHub Actions secret to enable web article search')
+  const tavilyKey  = import.meta.env.VITE_TAVILY_KEY
+  const googleKey  = import.meta.env.VITE_GOOGLE_CSE_KEY
+  const googleCxId = import.meta.env.VITE_GOOGLE_CSE_ID
+
+  if (!tavilyKey && !googleKey) {
+    throw new Error('Neither VITE_TAVILY_KEY nor VITE_GOOGLE_CSE_KEY is configured — add at least one as a GitHub Actions secret to enable web article search')
+  }
+
   const key = cacheKey('fetchGoogleCSEMentions', days, queriesFor('Google CSE'))
   const cached = fromCache<Mention[]>(key); if (cached) return cached
 
@@ -877,54 +889,75 @@ export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
   const seen = new Set<string>()
   const mentions: Mention[] = []
 
-  const results = await Promise.allSettled(
-    queries.map(q =>
-      fetch('https://api.tavily.com/search', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({
-          api_key: apiKey,
-          query: q,
-          search_depth: 'advanced',
-          max_results: 10,
-          include_answer: false,
-        }),
-      }).then(r => r.json()).then(d => d.results ?? [])
-    )
-  )
+  // Helper: add a result to mentions if it passes content screening + date filter
+  function ingest(url: string, title: string, body: string, rawDate: string, idPrefix: string) {
+    if (!url || seen.has(url)) return
+    const combined = `${title} ${body}`
+    if (!isCircleFinBlockchainContent(combined)) return
+    let dateStr = rawDate ? rawDate.slice(0, 10) : ''
+    if (!dateStr) {
+      const m = url.match(/\/(20\d\d)[\/\-](0[1-9]|1[0-2])[\/\-](0[1-9]|[12]\d|3[01])/)
+      if (m) dateStr = `${m[1]}-${m[2]}-${m[3]}`
+    }
+    if (dateStr && dateStr < cutoff) return
+    seen.add(url)
+    mentions.push({
+      id: `${idPrefix}-${encodeURIComponent(url).slice(0, 40)}`,
+      platform: platformFromUrl(url),
+      title: title || '(no title)',
+      url,
+      author: (() => { try { return new URL(url).hostname.replace('www.', '') } catch { return url } })(),
+      date: dateStr,
+      sentiment: classifySentiment(combined),
+      snippet: body.replace(/\n/g, ' ').trim().slice(0, 200),
+      score: 0,
+    })
+  }
 
-  for (const result of results) {
-    if (result.status !== 'fulfilled') continue
-    for (const item of result.value) {
-      const url: string = item.url ?? ''
-      if (seen.has(url)) continue
-      const combined = `${item.title ?? ''} ${item.content ?? ''}`
-      // Tavily already searched for the product query — skip isRelevant to avoid missing
-      // articles that use alternate spellings like "BridgeKit" or "Bridge Kit SDK".
-      // Still apply the domain screener to catch off-topic results.
-      if (!isCircleFinBlockchainContent(combined)) continue
-      // Tavily returns published_date when available; fall back to date in URL path
-      // (e.g. crypto.news/2025/10/14/...) rather than faking today's date.
-      let dateStr: string = item.published_date ? item.published_date.slice(0, 10) : ''
-      if (!dateStr) {
-        const m = url.match(/\/(20\d\d)[\/\-](0[1-9]|1[0-2])[\/\-](0[1-9]|[12]\d|3[01])/)
-        if (m) dateStr = `${m[1]}-${m[2]}-${m[3]}`
+  // ── Tavily ────────────────────────────────────────────────────────────────
+  if (tavilyKey) {
+    const tavilyResults = await Promise.allSettled(
+      queries.map(q =>
+        fetch('https://api.tavily.com/search', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            api_key: tavilyKey,
+            query: q,
+            search_depth: 'advanced',
+            max_results: 10,
+            include_answer: false,
+          }),
+        }).then(r => r.json()).then(d => d.results ?? [])
+      )
+    )
+    for (const result of tavilyResults) {
+      if (result.status !== 'fulfilled') continue
+      for (const item of result.value) {
+        ingest(item.url ?? '', item.title ?? '', item.content ?? '', item.published_date ?? '', 'tvly')
       }
-      // Only apply date filter when we have a reliable date; unknown-date articles pass through
-      if (dateStr && dateStr < cutoff) continue
-      seen.add(url)
-      const platform = platformFromUrl(url)
-      mentions.push({
-        id: `tvly-${encodeURIComponent(url).slice(0, 40)}`,
-        platform,
-        title: item.title ?? '(no title)',
-        url,
-        author: new URL(url).hostname.replace('www.', ''),
-        date: dateStr,
-        sentiment: classifySentiment(combined),
-        snippet: (item.content ?? '').replace(/\n/g, ' ').trim().slice(0, 200),
-        score: Math.round((item.score ?? 0) * 100),
-      })
+    }
+  }
+
+  // ── Google Custom Search Engine ───────────────────────────────────────────
+  // Free tier: 100 queries/day. Google indexes virtually all public pages
+  // including regional news aggregators that Tavily misses.
+  if (googleKey && googleCxId) {
+    const dateRestrict = days <= 7 ? 'w1' : days <= 30 ? 'm1' : days <= 90 ? 'm3' : 'm6'
+    const googleResults = await Promise.allSettled(
+      queries.map(q =>
+        fetch(
+          `https://www.googleapis.com/customsearch/v1?key=${googleKey}&cx=${googleCxId}&q=${encodeURIComponent(q)}&num=10&dateRestrict=${dateRestrict}&sort=date`
+        ).then(r => r.json()).then(d => d.items ?? [])
+      )
+    )
+    for (const result of googleResults) {
+      if (result.status !== 'fulfilled') continue
+      for (const item of result.value) {
+        const metatags = item.pagemap?.metatags?.[0] ?? {}
+        const rawDate = metatags['article:published_time'] || metatags['og:updated_time'] || metatags['date'] || ''
+        ingest(item.link ?? '', item.title ?? '', item.snippet ?? '', rawDate, 'gcse')
+      }
     }
   }
 

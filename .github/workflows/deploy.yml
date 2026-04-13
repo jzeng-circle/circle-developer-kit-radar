@@ -35,6 +35,8 @@ jobs:
           VITE_TAVILY_KEY: ${{ secrets.VITE_TAVILY_KEY }}
           VITE_NEWSAPI_KEY: ${{ secrets.VITE_NEWSAPI_KEY }}
           VITE_STACKEXCHANGE_KEY: ${{ secrets.VITE_STACKEXCHANGE_KEY }}
+          VITE_GOOGLE_CSE_KEY: ${{ secrets.VITE_GOOGLE_CSE_KEY }}
+          VITE_GOOGLE_CSE_ID: ${{ secrets.VITE_GOOGLE_CSE_ID }}
 
       - uses: actions/configure-pages@v4
 
