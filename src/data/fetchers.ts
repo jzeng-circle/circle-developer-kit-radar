@@ -885,7 +885,7 @@ export async function fetchGoogleCSEMentions(days = 30): Promise<Mention[]> {
         body: JSON.stringify({
           api_key: apiKey,
           query: q,
-          search_depth: 'basic',
+          search_depth: 'advanced',
           max_results: 10,
           include_answer: false,
         }),

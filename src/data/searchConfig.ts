@@ -117,11 +117,12 @@ const BRIDGE_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'Google CSE',
     queries: [
-      { id: 'cse-1', label: '"Circle Bridge Kit"',        note: 'Web-wide search — catches Binance Square, Mirror.xyz, blogs, press releases' },
-      { id: 'cse-2', label: '"Arc Bridge Kit"',            note: 'Arc sub-brand name web-wide' },
-      { id: 'cse-3', label: '"Circle Arc Bridge Kit"',     note: 'Full Arc sub-brand name web-wide' },
-      { id: 'cse-4', label: '"@circle-fin/bridge-kit"',   note: 'Package name references in tutorials and technical articles' },
-      { id: 'cse-5', label: 'circle bridge kit site:medium.com', note: 'Medium articles mentioning Circle Bridge Kit that may not use the exact tag' },
+      { id: 'cse-1', label: '"Circle Bridge Kit"',           note: 'Web-wide search — catches Binance Square, Mirror.xyz, blogs, press releases' },
+      { id: 'cse-2', label: '"Arc Bridge Kit"',              note: 'Arc sub-brand name web-wide' },
+      { id: 'cse-3', label: '"Circle Arc Bridge Kit"',       note: 'Full Arc sub-brand name web-wide' },
+      { id: 'cse-4', label: 'Circle Arc Bridge Kits SDK',    note: 'Unquoted — catches plural/possessive variants' },
+      { id: 'cse-5', label: '"@circle-fin/bridge-kit"',     note: 'Package name references in tutorials and technical articles' },
+      { id: 'cse-6', label: 'circle bridge kit site:medium.com', note: 'Medium articles mentioning Circle Bridge Kit that may not use the exact tag' },
     ],
   },
 ]
@@ -210,10 +211,11 @@ const APP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'Google CSE',
     queries: [
-      { id: 'cse-1', label: '"Circle App Kit"',      note: 'Web-wide search — blogs, press releases, tutorials' },
-      { id: 'cse-2', label: '"Arc App Kit"',          note: 'Arc sub-brand name web-wide' },
-      { id: 'cse-3', label: '"Circle Arc App Kit"',   note: 'Full Arc sub-brand name web-wide' },
-      { id: 'cse-4', label: '"@circle-fin/app-kit"', note: 'Package name in technical articles' },
+      { id: 'cse-1', label: '"Circle App Kit"',         note: 'Web-wide search — blogs, press releases, tutorials' },
+      { id: 'cse-2', label: '"Arc App Kit"',             note: 'Arc sub-brand name web-wide' },
+      { id: 'cse-3', label: '"Circle Arc App Kit"',      note: 'Full Arc sub-brand name web-wide' },
+      { id: 'cse-4', label: 'Circle Arc App Kits SDK',   note: 'Unquoted — catches plural/possessive variants (e.g. "Circle\'s Arc App Kits SDK")' },
+      { id: 'cse-5', label: '"@circle-fin/app-kit"',    note: 'Package name in technical articles' },
     ],
   },
 ]
@@ -302,10 +304,11 @@ const SWAP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'Google CSE',
     queries: [
-      { id: 'cse-1', label: '"Circle Swap Kit"',      note: 'Web-wide search — blogs, press releases, tutorials' },
-      { id: 'cse-2', label: '"Arc Swap Kit"',          note: 'Arc sub-brand name web-wide' },
-      { id: 'cse-3', label: '"Circle Arc Swap Kit"',   note: 'Full Arc sub-brand name web-wide' },
-      { id: 'cse-4', label: '"@circle-fin/swap-kit"', note: 'Package name in technical articles' },
+      { id: 'cse-1', label: '"Circle Swap Kit"',          note: 'Web-wide search — blogs, press releases, tutorials' },
+      { id: 'cse-2', label: '"Arc Swap Kit"',              note: 'Arc sub-brand name web-wide' },
+      { id: 'cse-3', label: '"Circle Arc Swap Kit"',       note: 'Full Arc sub-brand name web-wide' },
+      { id: 'cse-4', label: 'Circle Arc Swap Kits SDK',    note: 'Unquoted — catches plural/possessive variants' },
+      { id: 'cse-5', label: '"@circle-fin/swap-kit"',     note: 'Package name in technical articles' },
     ],
   },
 ]
