@@ -252,6 +252,7 @@ const APP_KIT_CONFIG: SourceConfig[] = [
     queries: [
       { id: 'cse-1', label: '"Circle App Kit"',      note: 'Web-wide search — blogs, press releases, tutorials' },
       { id: 'cse-2', label: '"@circle-fin/app-kit"', note: 'Package name in technical articles' },
+      { id: 'cse-3', label: '"Circle Arc"',           note: 'Arc sub-brand of Circle App Kit (e.g. "Circle Arc App Kits SDK")' },
     ],
   },
 ]

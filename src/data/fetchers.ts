@@ -140,6 +140,8 @@ const PRODUCT_ANCHORS = [
   "circle's bridge kit",
   "circle's app kit",
   "circle's swap kit",
+  // Arc sub-brand ("Circle Arc App Kits SDK", "Circle Arc")
+  'circle arc',
 ]
 
 // Layer 1: blockchain/web3/stablecoin domain signals.
