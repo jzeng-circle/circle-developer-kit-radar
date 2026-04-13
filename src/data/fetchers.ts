@@ -394,11 +394,56 @@ export async function fetchGitHubRepos() {
 
   if (candidates.length === 0 && firstError !== null) throw firstError
 
+  // Step 1b: code search — finds repos that use a Circle kit package in their
+  // package.json but don't mention the product in their name/description/topics.
+  // These are missed entirely by the repo-name search above.
+  const activePackages = packagesFor('npm')  // e.g. ['@circle-fin/app-kit']
+
+  if (activePackages.length > 0) {
+    const { results: codeResults } = await sequential(
+      activePackages.map(pkg => () =>
+        fetch(
+          `https://api.github.com/search/code?q=${encodeURIComponent(`"${pkg}" filename:package.json`)}&per_page=10`,
+          { headers: githubHeaders() }
+        ).then(r => r.json()).then(d => d.items ?? [])
+      ),
+      hasToken ? 0 : 1500
+    )
+
+    const newFullNames: string[] = []
+    for (const result of codeResults) {
+      if (result.status !== 'fulfilled') continue
+      for (const item of result.value) {
+        const repo = item.repository
+        if (!repo?.full_name || seen.has(repo.full_name)) continue
+        seen.add(repo.full_name)
+        newFullNames.push(repo.full_name)
+      }
+    }
+
+    // Fetch repo details (for star count) — uses core API limit, not search limit
+    if (newFullNames.length > 0) {
+      const repoDetails = await Promise.allSettled(
+        newFullNames.map(name =>
+          fetch(`https://api.github.com/repos/${name}`, { headers: githubHeaders() }).then(r => r.json())
+        )
+      )
+      for (const r of repoDetails) {
+        if (r.status !== 'fulfilled' || !r.value.full_name) continue
+        candidates.push({
+          full_name: r.value.full_name,
+          stars: r.value.stargazers_count ?? 0,
+          description: r.value.description ?? '',
+          html_url: r.value.html_url,
+        })
+      }
+    }
+  }
+
   // Step 2: verify each candidate by fetching its package.json — ground truth.
   // Only keep repos that actually declare at least one of this product's packages
   // as a dependency. This prevents e.g. a Bridge Kit repo from appearing under
   // Swap Kit just because the search query loosely matched its repo name.
-  const activePackages = packagesFor('npm')  // e.g. ['@circle-fin/bridge-kit']
 
   const verified = await Promise.allSettled(
     candidates.map(async c => {
@@ -425,7 +470,7 @@ export async function fetchGitHubRepos() {
       kits: r.kits,
     }))
 
-  return toCache(key, repos.sort((a, b) => b.stars - a.stars).slice(0, 8))
+  return toCache(key, repos.sort((a, b) => b.stars - a.stars).slice(0, 20))
 }
 
 // ─── Reddit ──────────────────────────────────────────────────────────────────
