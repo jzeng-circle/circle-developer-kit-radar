@@ -39,143 +39,89 @@ const BRIDGE_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'GitHub',
     queries: [
-      {
-        id: 'gh-1',
-        label: '"Circle Bridge Kit"',
-        note: 'Exact product name — matches issues, PRs and discussions',
-      },
-      {
-        id: 'gh-2',
-        label: '"circle-fin/bridge-kit"',
-        note: 'References to the official npm package path on GitHub',
-      },
-      {
-        id: 'gh-3',
-        label: '"@circle-fin/bridge-kit"',
-        note: 'Import statements and package.json references in issues/PRs',
-      },
+      { id: 'gh-1', label: '"Circle Bridge Kit"',        note: 'Exact product name — matches issues, PRs and discussions' },
+      { id: 'gh-2', label: '"Arc Bridge Kit"',            note: 'Arc sub-brand name' },
+      { id: 'gh-3', label: '"Circle Arc Bridge Kit"',     note: 'Full Arc sub-brand name' },
+      { id: 'gh-4', label: '"circle-fin/bridge-kit"',    note: 'References to the official npm package path on GitHub' },
+      { id: 'gh-5', label: '"@circle-fin/bridge-kit"',   note: 'Import statements and package.json references in issues/PRs' },
     ],
   },
   {
     source: 'GitHub Repos',
     queries: [
-      {
-        id: 'ghr-1',
-        label: 'circle-bridge-kit',
-        note: 'Repos referencing Circle Bridge Kit by package/name — avoids generic "bridge-kit" noise',
-      },
+      { id: 'ghr-1', label: 'circle-bridge-kit', note: 'Repos referencing Circle Bridge Kit by package/name — avoids generic "bridge-kit" noise' },
+      { id: 'ghr-2', label: 'arc-bridge-kit',    note: 'Repos referencing Arc Bridge Kit sub-brand name' },
     ],
   },
   {
     source: 'GitHub Commits',
     queries: [
-      {
-        id: 'ghc-1',
-        label: '"Circle Bridge Kit" OR "@circle-fin/bridge-kit"',
-        note: 'Commit messages referencing the product or package',
-      },
+      { id: 'ghc-1', label: '"Circle Bridge Kit" OR "Arc Bridge Kit" OR "Circle Arc Bridge Kit" OR "@circle-fin/bridge-kit"', note: 'All product name variants and package in commit messages' },
     ],
   },
   {
     source: 'Hacker News',
     queries: [
-      {
-        id: 'hn-1',
-        label: '"Circle Bridge Kit"',
-        note: 'Exact product name in HN stories and comments',
-      },
-      {
-        id: 'hn-2',
-        label: '"@circle-fin/bridge-kit"',
-        note: 'Package name references in HN discussions',
-      },
+      { id: 'hn-1', label: '"Circle Bridge Kit"',       note: 'Exact product name in HN stories and comments' },
+      { id: 'hn-2', label: '"Arc Bridge Kit"',           note: 'Arc sub-brand name in HN discussions' },
+      { id: 'hn-3', label: '"Circle Arc Bridge Kit"',    note: 'Full Arc sub-brand name in HN discussions' },
+      { id: 'hn-4', label: '"@circle-fin/bridge-kit"',  note: 'Package name references in HN discussions' },
     ],
   },
   {
     source: 'Medium',
     queries: [
-      {
-        id: 'md-1',
-        label: 'circle-bridge-kit',
-        note: 'Medium tag for Circle Bridge Kit articles',
-      },
+      { id: 'md-1', label: 'circle-bridge-kit', note: 'Medium tag for Circle Bridge Kit articles' },
+      { id: 'md-2', label: 'arc-bridge-kit',    note: 'Medium tag for Arc Bridge Kit articles' },
     ],
   },
   {
     source: 'Reddit',
     queries: [
-      {
-        id: 'rd-1',
-        label: '"Circle Bridge Kit"',
-        note: 'Exact product name — avoids unrelated bridge mentions',
-      },
-      {
-        id: 'rd-2',
-        label: '"bridge-kit" circle',
-        note: 'SDK short name combined with Circle brand',
-      },
+      { id: 'rd-1', label: '"Circle Bridge Kit"',       note: 'Exact product name — avoids unrelated bridge mentions' },
+      { id: 'rd-2', label: '"Arc Bridge Kit"',           note: 'Arc sub-brand name' },
+      { id: 'rd-3', label: '"Circle Arc Bridge Kit"',    note: 'Full Arc sub-brand name' },
+      { id: 'rd-4', label: '"bridge-kit" circle',        note: 'SDK short name combined with Circle brand' },
     ],
   },
   {
     source: 'Dev.to',
     queries: [
-      {
-        id: 'dt-1',
-        label: '"Circle Bridge Kit"',
-        note: 'Exact product name',
-      },
+      { id: 'dt-1', label: '"Circle Bridge Kit"',    note: 'Exact product name' },
+      { id: 'dt-2', label: '"Arc Bridge Kit"',        note: 'Arc sub-brand name' },
+      { id: 'dt-3', label: '"Circle Arc Bridge Kit"', note: 'Full Arc sub-brand name' },
     ],
   },
   {
     source: 'Stack Overflow',
     queries: [
-      {
-        id: 'so-1',
-        label: '"Circle Bridge Kit"',
-        note: 'Exact product name — avoids noise from unrelated bridge SDKs',
-      },
-      {
-        id: 'so-2',
-        label: '"@circle-fin/bridge-kit"',
-        note: 'Package name as used in import errors and troubleshooting questions',
-      },
+      { id: 'so-1', label: '"Circle Bridge Kit"',      note: 'Exact product name — avoids noise from unrelated bridge SDKs' },
+      { id: 'so-2', label: '"Arc Bridge Kit"',          note: 'Arc sub-brand name' },
+      { id: 'so-3', label: '"Circle Arc Bridge Kit"',   note: 'Full Arc sub-brand name' },
+      { id: 'so-4', label: '"@circle-fin/bridge-kit"', note: 'Package name as used in import errors and troubleshooting questions' },
     ],
   },
   {
     source: 'npm',
     queries: [],
-    packages: [
-      '@circle-fin/bridge-kit',
-    ],
+    packages: ['@circle-fin/bridge-kit'],
   },
   {
     source: 'News (NewsAPI)',
     queries: [
-      {
-        id: 'news-1',
-        label: '"Circle Bridge Kit"',
-        note: 'Exact product name in news and blog coverage',
-      },
+      { id: 'news-1', label: '"Circle Bridge Kit"',    note: 'Exact product name in news and blog coverage' },
+      { id: 'news-2', label: '"Arc Bridge Kit"',        note: 'Arc sub-brand name in news coverage' },
+      { id: 'news-3', label: '"Circle Arc Bridge Kit"', note: 'Full Arc sub-brand name in news coverage' },
     ],
   },
   {
     source: 'Google CSE',
     queries: [
-      {
-        id: 'cse-1',
-        label: '"Circle Bridge Kit"',
-        note: 'Web-wide search — catches Binance Square, Mirror.xyz, blogs, press releases',
-      },
-      {
-        id: 'cse-2',
-        label: '"@circle-fin/bridge-kit"',
-        note: 'Package name references in tutorials and technical articles',
-      },
-      {
-        id: 'cse-3',
-        label: 'circle bridge kit site:medium.com',
-        note: 'Medium articles mentioning Circle Bridge Kit that may not use the exact tag',
-      },
+      { id: 'cse-1', label: '"Circle Bridge Kit"',        note: 'Web-wide search — catches Binance Square, Mirror.xyz, blogs, press releases' },
+      { id: 'cse-2', label: '"Arc Bridge Kit"',            note: 'Arc sub-brand name web-wide' },
+      { id: 'cse-3', label: '"Circle Arc Bridge Kit"',     note: 'Full Arc sub-brand name web-wide' },
+      { id: 'cse-4', label: '"@circle-fin/bridge-kit"',   note: 'Package name references in tutorials and technical articles' },
+      { id: 'cse-5', label: 'circle bridge kit site:medium.com', note: 'Medium articles mentioning Circle Bridge Kit that may not use the exact tag' },
     ],
   },
 ]
@@ -186,62 +132,66 @@ const APP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'GitHub',
     queries: [
-      { id: 'gh-1', label: '"Circle App Kit"',         note: 'Exact product name' },
-      { id: 'gh-2', label: '"circle-fin/app-kit"',     note: 'npm package path references' },
-      { id: 'gh-3', label: '"@circle-fin/app-kit"',    note: 'Import statements and package.json references' },
-      { id: 'gh-4', label: '"Circle Arc"',             note: 'Arc sub-brand of Circle App Kit' },
+      { id: 'gh-1', label: '"Circle App Kit"',        note: 'Exact product name' },
+      { id: 'gh-2', label: '"Arc App Kit"',            note: 'Arc sub-brand name' },
+      { id: 'gh-3', label: '"Circle Arc App Kit"',     note: 'Full Arc sub-brand name' },
+      { id: 'gh-4', label: '"circle-fin/app-kit"',    note: 'npm package path references' },
+      { id: 'gh-5', label: '"@circle-fin/app-kit"',   note: 'Import statements and package.json references' },
     ],
   },
   {
     source: 'GitHub Repos',
     queries: [
       { id: 'ghr-1', label: 'circle-app-kit', note: 'Repos referencing Circle App Kit by package/name — avoids generic noise' },
-      { id: 'ghr-2', label: 'circle-arc',     note: 'Repos referencing Circle Arc sub-brand' },
+      { id: 'ghr-2', label: 'arc-app-kit',    note: 'Repos referencing Arc App Kit sub-brand name' },
     ],
   },
   {
     source: 'GitHub Commits',
     queries: [
-      { id: 'ghc-1', label: '"Circle App Kit" OR "@circle-fin/app-kit"', note: 'Commit messages referencing the product or package' },
-      { id: 'ghc-2', label: '"Circle Arc"',                              note: 'Commit messages referencing the Arc sub-brand' },
+      { id: 'ghc-1', label: '"Circle App Kit" OR "Arc App Kit" OR "Circle Arc App Kit" OR "@circle-fin/app-kit"', note: 'All product name variants and package in commit messages' },
     ],
   },
   {
     source: 'Hacker News',
     queries: [
       { id: 'hn-1', label: '"Circle App Kit"',      note: 'Exact product name in HN stories' },
-      { id: 'hn-2', label: '"@circle-fin/app-kit"', note: 'Package name references in HN discussions' },
-      { id: 'hn-3', label: '"Circle Arc"',           note: 'Arc sub-brand in HN discussions' },
+      { id: 'hn-2', label: '"Arc App Kit"',          note: 'Arc sub-brand name in HN discussions' },
+      { id: 'hn-3', label: '"Circle Arc App Kit"',   note: 'Full Arc sub-brand name in HN discussions' },
+      { id: 'hn-4', label: '"@circle-fin/app-kit"', note: 'Package name references in HN discussions' },
     ],
   },
   {
     source: 'Medium',
     queries: [
       { id: 'md-1', label: 'circle-app-kit', note: 'Medium tag for Circle App Kit articles' },
-      { id: 'md-2', label: 'circle-arc',     note: 'Medium tag for Circle Arc articles' },
+      { id: 'md-2', label: 'arc-app-kit',    note: 'Medium tag for Arc App Kit articles' },
     ],
   },
   {
     source: 'Reddit',
     queries: [
-      { id: 'rd-1', label: '"Circle App Kit"', note: 'Exact product name' },
-      { id: 'rd-2', label: '"app-kit" circle', note: 'SDK short name combined with Circle brand' },
-      { id: 'rd-3', label: '"Circle Arc"',     note: 'Arc sub-brand mentions' },
+      { id: 'rd-1', label: '"Circle App Kit"',     note: 'Exact product name' },
+      { id: 'rd-2', label: '"Arc App Kit"',         note: 'Arc sub-brand name' },
+      { id: 'rd-3', label: '"Circle Arc App Kit"',  note: 'Full Arc sub-brand name' },
+      { id: 'rd-4', label: '"app-kit" circle',      note: 'SDK short name combined with Circle brand' },
     ],
   },
   {
     source: 'Dev.to',
     queries: [
-      { id: 'dt-1', label: '"Circle App Kit"', note: 'Exact product name' },
-      { id: 'dt-2', label: '"Circle Arc"',     note: 'Arc sub-brand articles' },
+      { id: 'dt-1', label: '"Circle App Kit"',    note: 'Exact product name' },
+      { id: 'dt-2', label: '"Arc App Kit"',        note: 'Arc sub-brand name' },
+      { id: 'dt-3', label: '"Circle Arc App Kit"', note: 'Full Arc sub-brand name' },
     ],
   },
   {
     source: 'Stack Overflow',
     queries: [
       { id: 'so-1', label: '"Circle App Kit"',      note: 'Exact product name' },
-      { id: 'so-2', label: '"@circle-fin/app-kit"', note: 'Package name in troubleshooting questions' },
-      { id: 'so-3', label: '"Circle Arc"',           note: 'Arc sub-brand questions' },
+      { id: 'so-2', label: '"Arc App Kit"',          note: 'Arc sub-brand name' },
+      { id: 'so-3', label: '"Circle Arc App Kit"',   note: 'Full Arc sub-brand name' },
+      { id: 'so-4', label: '"@circle-fin/app-kit"', note: 'Package name in troubleshooting questions' },
     ],
   },
   {
@@ -252,16 +202,18 @@ const APP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'News (NewsAPI)',
     queries: [
-      { id: 'news-1', label: '"Circle App Kit"', note: 'Exact product name in news coverage' },
-      { id: 'news-2', label: '"Circle Arc"',     note: 'Arc sub-brand news coverage' },
+      { id: 'news-1', label: '"Circle App Kit"',    note: 'Exact product name in news coverage' },
+      { id: 'news-2', label: '"Arc App Kit"',        note: 'Arc sub-brand name in news coverage' },
+      { id: 'news-3', label: '"Circle Arc App Kit"', note: 'Full Arc sub-brand name in news coverage' },
     ],
   },
   {
     source: 'Google CSE',
     queries: [
       { id: 'cse-1', label: '"Circle App Kit"',      note: 'Web-wide search — blogs, press releases, tutorials' },
-      { id: 'cse-2', label: '"@circle-fin/app-kit"', note: 'Package name in technical articles' },
-      { id: 'cse-3', label: '"Circle Arc"',           note: 'Arc sub-brand of Circle App Kit (e.g. "Circle Arc App Kits SDK")' },
+      { id: 'cse-2', label: '"Arc App Kit"',          note: 'Arc sub-brand name web-wide' },
+      { id: 'cse-3', label: '"Circle Arc App Kit"',   note: 'Full Arc sub-brand name web-wide' },
+      { id: 'cse-4', label: '"@circle-fin/app-kit"', note: 'Package name in technical articles' },
     ],
   },
 ]
@@ -272,54 +224,66 @@ const SWAP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'GitHub',
     queries: [
-      { id: 'gh-1', label: '"Circle Swap Kit"',        note: 'Exact product name' },
-      { id: 'gh-2', label: '"circle-fin/swap-kit"',    note: 'npm package path references' },
-      { id: 'gh-3', label: '"@circle-fin/swap-kit"',   note: 'Import statements and package.json references' },
+      { id: 'gh-1', label: '"Circle Swap Kit"',       note: 'Exact product name' },
+      { id: 'gh-2', label: '"Arc Swap Kit"',           note: 'Arc sub-brand name' },
+      { id: 'gh-3', label: '"Circle Arc Swap Kit"',    note: 'Full Arc sub-brand name' },
+      { id: 'gh-4', label: '"circle-fin/swap-kit"',   note: 'npm package path references' },
+      { id: 'gh-5', label: '"@circle-fin/swap-kit"',  note: 'Import statements and package.json references' },
     ],
   },
   {
     source: 'GitHub Repos',
     queries: [
       { id: 'ghr-1', label: 'circle-swap-kit', note: 'Repos referencing Circle Swap Kit by package/name — avoids generic noise' },
+      { id: 'ghr-2', label: 'arc-swap-kit',    note: 'Repos referencing Arc Swap Kit sub-brand name' },
     ],
   },
   {
     source: 'GitHub Commits',
     queries: [
-      { id: 'ghc-1', label: '"Circle Swap Kit" OR "@circle-fin/swap-kit"', note: 'Commit messages referencing the product or package' },
+      { id: 'ghc-1', label: '"Circle Swap Kit" OR "Arc Swap Kit" OR "Circle Arc Swap Kit" OR "@circle-fin/swap-kit"', note: 'All product name variants and package in commit messages' },
     ],
   },
   {
     source: 'Hacker News',
     queries: [
-      { id: 'hn-1', label: '"Circle Swap Kit"',       note: 'Exact product name in HN stories' },
-      { id: 'hn-2', label: '"@circle-fin/swap-kit"',  note: 'Package name references in HN discussions' },
+      { id: 'hn-1', label: '"Circle Swap Kit"',      note: 'Exact product name in HN stories' },
+      { id: 'hn-2', label: '"Arc Swap Kit"',          note: 'Arc sub-brand name in HN discussions' },
+      { id: 'hn-3', label: '"Circle Arc Swap Kit"',   note: 'Full Arc sub-brand name in HN discussions' },
+      { id: 'hn-4', label: '"@circle-fin/swap-kit"', note: 'Package name references in HN discussions' },
     ],
   },
   {
     source: 'Medium',
     queries: [
       { id: 'md-1', label: 'circle-swap-kit', note: 'Medium tag for Circle Swap Kit articles' },
+      { id: 'md-2', label: 'arc-swap-kit',    note: 'Medium tag for Arc Swap Kit articles' },
     ],
   },
   {
     source: 'Reddit',
     queries: [
-      { id: 'rd-1', label: '"Circle Swap Kit"',  note: 'Exact product name' },
-      { id: 'rd-2', label: '"swap-kit" circle',  note: 'SDK short name combined with Circle brand' },
+      { id: 'rd-1', label: '"Circle Swap Kit"',    note: 'Exact product name' },
+      { id: 'rd-2', label: '"Arc Swap Kit"',        note: 'Arc sub-brand name' },
+      { id: 'rd-3', label: '"Circle Arc Swap Kit"', note: 'Full Arc sub-brand name' },
+      { id: 'rd-4', label: '"swap-kit" circle',     note: 'SDK short name combined with Circle brand' },
     ],
   },
   {
     source: 'Dev.to',
     queries: [
-      { id: 'dt-1', label: '"Circle Swap Kit"', note: 'Exact product name' },
+      { id: 'dt-1', label: '"Circle Swap Kit"',    note: 'Exact product name' },
+      { id: 'dt-2', label: '"Arc Swap Kit"',        note: 'Arc sub-brand name' },
+      { id: 'dt-3', label: '"Circle Arc Swap Kit"', note: 'Full Arc sub-brand name' },
     ],
   },
   {
     source: 'Stack Overflow',
     queries: [
-      { id: 'so-1', label: '"Circle Swap Kit"',       note: 'Exact product name' },
-      { id: 'so-2', label: '"@circle-fin/swap-kit"',  note: 'Package name in troubleshooting questions' },
+      { id: 'so-1', label: '"Circle Swap Kit"',      note: 'Exact product name' },
+      { id: 'so-2', label: '"Arc Swap Kit"',          note: 'Arc sub-brand name' },
+      { id: 'so-3', label: '"Circle Arc Swap Kit"',   note: 'Full Arc sub-brand name' },
+      { id: 'so-4', label: '"@circle-fin/swap-kit"', note: 'Package name in troubleshooting questions' },
     ],
   },
   {
@@ -330,14 +294,18 @@ const SWAP_KIT_CONFIG: SourceConfig[] = [
   {
     source: 'News (NewsAPI)',
     queries: [
-      { id: 'news-1', label: '"Circle Swap Kit"', note: 'Exact product name in news coverage' },
+      { id: 'news-1', label: '"Circle Swap Kit"',    note: 'Exact product name in news coverage' },
+      { id: 'news-2', label: '"Arc Swap Kit"',        note: 'Arc sub-brand name in news coverage' },
+      { id: 'news-3', label: '"Circle Arc Swap Kit"', note: 'Full Arc sub-brand name in news coverage' },
     ],
   },
   {
     source: 'Google CSE',
     queries: [
-      { id: 'cse-1', label: '"Circle Swap Kit"',       note: 'Web-wide search — blogs, press releases, tutorials' },
-      { id: 'cse-2', label: '"@circle-fin/swap-kit"',  note: 'Package name in technical articles' },
+      { id: 'cse-1', label: '"Circle Swap Kit"',      note: 'Web-wide search — blogs, press releases, tutorials' },
+      { id: 'cse-2', label: '"Arc Swap Kit"',          note: 'Arc sub-brand name web-wide' },
+      { id: 'cse-3', label: '"Circle Arc Swap Kit"',   note: 'Full Arc sub-brand name web-wide' },
+      { id: 'cse-4', label: '"@circle-fin/swap-kit"', note: 'Package name in technical articles' },
     ],
   },
 ]
@@ -348,7 +316,7 @@ export const PRODUCTS: ProductConfig[] = [
   {
     id: 'bridge-kit',
     name: 'Circle Bridge Kit',
-    relevanceTerms: ['circle bridge kit', 'circlebridgekit', 'bridgekit', '@circle-fin/bridge-kit', 'circle-fin/bridge-kit'],
+    relevanceTerms: ['circle bridge kit', 'arc bridge kit', 'circle arc bridge kit', 'arc-bridge-kit', 'circlebridgekit', 'bridgekit', '@circle-fin/bridge-kit', 'circle-fin/bridge-kit'],
     searchConfig: BRIDGE_KIT_CONFIG,
     opportunityKeywords: [
       { id: 'op-bk-1', label: 'USDC bridging',                  rationale: 'Core use case — developers looking to bridge USDC cross-chain' },
@@ -364,7 +332,7 @@ export const PRODUCTS: ProductConfig[] = [
   {
     id: 'app-kit',
     name: 'Circle App Kit',
-    relevanceTerms: ['circle app kit', '@circle-fin/app-kit', 'circle-fin/app-kit'],
+    relevanceTerms: ['circle app kit', 'arc app kit', 'circle arc app kit', 'arc-app-kit', '@circle-fin/app-kit', 'circle-fin/app-kit'],
     searchConfig: APP_KIT_CONFIG,
     opportunityKeywords: [
       { id: 'op-ak-1', label: 'stablecoin payment sdk',          rationale: 'Developers looking for a payment SDK — core App Kit use case' },
@@ -380,7 +348,7 @@ export const PRODUCTS: ProductConfig[] = [
   {
     id: 'swap-kit',
     name: 'Circle Swap Kit',
-    relevanceTerms: ['circle swap kit', '@circle-fin/swap-kit', 'circle-fin/swap-kit'],
+    relevanceTerms: ['circle swap kit', 'arc swap kit', 'circle arc swap kit', 'arc-swap-kit', '@circle-fin/swap-kit', 'circle-fin/swap-kit'],
     searchConfig: SWAP_KIT_CONFIG,
     opportunityKeywords: [
       { id: 'op-sk-1', label: 'swap stablecoin on-chain',        rationale: 'Core Swap Kit use case — stablecoin swapping' },

@@ -140,8 +140,14 @@ const PRODUCT_ANCHORS = [
   "circle's bridge kit",
   "circle's app kit",
   "circle's swap kit",
-  // Arc sub-brand ("Circle Arc App Kits SDK", "Circle Arc")
-  'circle arc',
+  // Arc sub-brand — short form ("Arc App Kit", "Arc Bridge Kit", "Arc Swap Kit")
+  'arc app kit',    'arc-app-kit',
+  'arc bridge kit', 'arc-bridge-kit',
+  'arc swap kit',   'arc-swap-kit',
+  // Arc sub-brand — full form ("Circle Arc App Kit", etc.)
+  'circle arc app kit',
+  'circle arc bridge kit',
+  'circle arc swap kit',
 ]
 
 // Layer 1: blockchain/web3/stablecoin domain signals.
@@ -176,6 +182,9 @@ const CIRCLE_FIN_SIGNALS = [
   'circle usdc', 'circle stablecoin', 'circle wallet',
   'circle bridge', 'circle swap', 'circle app kit',
   "circle's bridge", "circle's swap", "circle's app",
+  // Arc sub-brand signals — specific enough to uniquely identify Circle
+  'arc app kit', 'arc bridge kit', 'arc swap kit',
+  'circle arc app kit', 'circle arc bridge kit', 'circle arc swap kit',
 ]
 
 /**
