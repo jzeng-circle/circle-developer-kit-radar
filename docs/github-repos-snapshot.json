@@ -1,11 +1,13 @@
 {
   "meta": {
     "fetched_at": "2026-04-14",
-    "source": "GitHub API — repo name search + package.json verification",
-    "dashboard": "https://jzeng-circle.github.io/circle-developer-kit-radar/"
+    "source": "GitHub API — repo name/readme search + package.json verification",
+    "dashboard": "https://jzeng-circle.github.io/circle-developer-kit-radar/",
+    "notes": "Only repos with @circle-fin/* confirmed in package.json are included. Sorted by stars desc."
   },
   "app-kit": {
     "product": "Circle App Kit",
+    "total": 5,
     "repos": [
       {
         "name": "Maje53/arc-payment-hub",
@@ -14,12 +16,54 @@
         "description": "USDC Bridge and Send app built on Arc Testnet using Circle App Kits SDK",
         "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2", "@circle-fin/x402-batching"],
         "last_commit": "2026-04-11"
+      },
+      {
+        "name": "Avnsmith/arcfx",
+        "url": "https://github.com/Avnsmith/arcfx",
+        "stars": 0,
+        "description": "ArcFX - Multichain DEX on Arc Testnet",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-02"
+      },
+      {
+        "name": "Doppler2u/Flowfi",
+        "url": "https://github.com/Doppler2u/Flowfi",
+        "stars": 0,
+        "description": "",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-09",
+        "notes": "package.json located at frontend/package.json (monorepo)"
+      },
+      {
+        "name": "mrrobot792/lumina",
+        "url": "https://github.com/mrrobot792/lumina",
+        "stars": 0,
+        "description": "",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-13"
+      },
+      {
+        "name": "starlash7/Arc-test",
+        "url": "https://github.com/starlash7/Arc-test",
+        "stars": 0,
+        "description": "",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-circle-wallets", "@circle-fin/adapter-viem-v2", "@circle-fin/developer-controlled-wallets"],
+        "last_commit": "2026-04-06"
       }
     ]
   },
   "bridge-kit": {
     "product": "Circle Bridge Kit",
+    "total": 11,
     "repos": [
+      {
+        "name": "circlefin/arc-fintech",
+        "url": "https://github.com/circlefin/arc-fintech",
+        "stars": 18,
+        "description": "This sample app demonstrates a multi-chain treasury management system with cross-chain interoperability.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-circle-wallets", "@circle-fin/developer-controlled-wallets"],
+        "last_commit": "2026-04-14"
+      },
       {
         "name": "circlefin/circle-bridge-kit-transfer",
         "url": "https://github.com/circlefin/circle-bridge-kit-transfer",
@@ -35,6 +79,54 @@
         "description": "Arc Bridge Swap: Uniswap V2 DEX + Circle Bridge Kit integration for Sepolia ↔ Arc testnet USDC transfers",
         "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
         "last_commit": "2026-03-10"
+      },
+      {
+        "name": "mjkid221/fff-cctp-bridge",
+        "url": "https://github.com/mjkid221/fff-cctp-bridge",
+        "stars": 1,
+        "description": "The Workspace for Cross-Chain Transfer Protocol (CCTP) v2",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-solana", "@circle-fin/adapter-viem-v2", "@circle-fin/provider-cctp-v2"],
+        "last_commit": "2026-04-11"
+      },
+      {
+        "name": "tomasfonsecsi/zentryx",
+        "url": "https://github.com/tomasfonsecsi/zentryx",
+        "stars": 0,
+        "description": "Stablecoin bridge interface built on Arc",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-11"
+      },
+      {
+        "name": "Emperoar07/Presto",
+        "url": "https://github.com/Emperoar07/Presto",
+        "stars": 0,
+        "description": "A decentralized exchange on Tempo blockchain",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-solana-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-10"
+      },
+      {
+        "name": "Kewe63/arc-network-dex",
+        "url": "https://github.com/Kewe63/arc-network-dex",
+        "stars": 0,
+        "description": "",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-02"
+      },
+      {
+        "name": "HongmingWang-Rabbit/usdc_bridge_widget",
+        "url": "https://github.com/HongmingWang-Rabbit/usdc_bridge_widget",
+        "stars": 0,
+        "description": "",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-03-27"
+      },
+      {
+        "name": "linux070/stac-defi",
+        "url": "https://github.com/linux070/stac-defi",
+        "stars": 0,
+        "description": "Stac leverages Arc's sub-second finality and USDC gas for frictionless, swapping, bridging, and liquidity provision.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-03-01"
       },
       {
         "name": "EggsLeggs/usdc-hopper-hackathon",
@@ -56,6 +148,7 @@
   },
   "swap-kit": {
     "product": "Circle Swap Kit",
+    "total": 0,
     "repos": []
   }
 }
