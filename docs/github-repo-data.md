@@ -115,6 +115,17 @@ const allRepos = Object.entries(store).flatMap(([productId, entry]) =>
 allRepos.sort((a, b) => b.stars - a.stars)
 ```
 
+## Snapshot file
+
+A point-in-time snapshot of verified repos is committed alongside this doc:
+
+```
+docs/github-repos-snapshot.json
+```
+
+It is updated manually by running the API and re-committing. The live dashboard
+updates `localStorage` automatically on every page load.
+
 ## Notes
 
 - Repos are verified against `package.json` before inclusion — each entry

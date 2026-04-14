@@ -1,0 +1,61 @@
+{
+  "meta": {
+    "fetched_at": "2026-04-14",
+    "source": "GitHub API — repo name search + package.json verification",
+    "dashboard": "https://jzeng-circle.github.io/circle-developer-kit-radar/"
+  },
+  "app-kit": {
+    "product": "Circle App Kit",
+    "repos": [
+      {
+        "name": "Maje53/arc-payment-hub",
+        "url": "https://github.com/Maje53/arc-payment-hub",
+        "stars": 3,
+        "description": "USDC Bridge and Send app built on Arc Testnet using Circle App Kits SDK",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2", "@circle-fin/x402-batching"],
+        "last_commit": "2026-04-11"
+      }
+    ]
+  },
+  "bridge-kit": {
+    "product": "Circle Bridge Kit",
+    "repos": [
+      {
+        "name": "circlefin/circle-bridge-kit-transfer",
+        "url": "https://github.com/circlefin/circle-bridge-kit-transfer",
+        "stars": 6,
+        "description": "A sample application that demonstrates how to use Bridge Kit to make cross chain USDC transfers with a wallet connect experience.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-solana", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-09"
+      },
+      {
+        "name": "dharmanan/Arc-Testnet-Bridge-Swap",
+        "url": "https://github.com/dharmanan/Arc-Testnet-Bridge-Swap",
+        "stars": 4,
+        "description": "Arc Bridge Swap: Uniswap V2 DEX + Circle Bridge Kit integration for Sepolia ↔ Arc testnet USDC transfers",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-03-10"
+      },
+      {
+        "name": "EggsLeggs/usdc-hopper-hackathon",
+        "url": "https://github.com/EggsLeggs/usdc-hopper-hackathon",
+        "stars": 0,
+        "description": "USDC Hopper is a lightweight cross-chain transfer application built with Circle's Bridge Kit and Arc to make moving USDC between networks effortless.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2025-12-10"
+      },
+      {
+        "name": "aicarcwallet-arc/hackthone",
+        "url": "https://github.com/aicarcwallet-arc/hackthone",
+        "stars": 0,
+        "description": "AI-powered vocabulary game on Arc Testnet. Earn AIC tokens, swap to USDC, bridge to any chain. Built with Circle Bridge Kit, OpenAI validation, and React.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2", "@circle-fin/developer-controlled-wallets"],
+        "last_commit": "2025-11-08"
+      }
+    ]
+  },
+  "swap-kit": {
+    "product": "Circle Swap Kit",
+    "repos": []
+  }
+}
