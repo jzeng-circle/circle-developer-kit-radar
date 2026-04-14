@@ -1,0 +1,44 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Circle Developer Kit Reports</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <meta http-equiv="X-UA-Compatible" content="IE=edge">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/docsify@4/lib/themes/vue.min.css">
+  <style>
+    :root {
+      --theme-color: #4F6BED;
+    }
+    .sidebar-nav > ul > li > p {
+      font-weight: 700;
+      font-size: 0.85em;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: #666;
+      margin: 1em 0 0.25em;
+    }
+  </style>
+</head>
+<body>
+  <div id="app">Loading reports...</div>
+  <script>
+    window.$docsify = {
+      name: 'Circle Dev Kit Reports',
+      nameLink: '/',
+      repo: 'https://github.com/jzeng-circle/circle-developer-kit-radar',
+      loadSidebar: '_sidebar.md',
+      subMaxLevel: 2,
+      homepage: 'INDEX.md',
+      auto2top: true,
+      search: {
+        placeholder: 'Search reports',
+        noData: 'No results found.',
+        depth: 3,
+      },
+    }
+  </script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/docsify.min.js"></script>
+  <script src="https://cdn.jsdelivr.net/npm/docsify@4/lib/plugins/search.min.js"></script>
+</body>
+</html>

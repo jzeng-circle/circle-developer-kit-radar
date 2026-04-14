@@ -1,0 +1,218 @@
+{
+  "meta": {
+    "fetched_at": "2026-04-14",
+    "source": "GitHub API — repo name/readme search + package.json verification",
+    "dashboard": "https://jzeng-circle.github.io/circle-developer-kit-radar/",
+    "notes": "Only repos with @circle-fin/* confirmed in package.json are included. Sorted by stars desc."
+  },
+  "app-kit": {
+    "product": "Circle App Kit",
+    "total": 12,
+    "unverified": 1,
+    "notes": "TarunKoushal6/J14-75 listed in dashboard but app-kit could not be confirmed in any accessible package.json (deep pnpm monorepo).",
+    "repos": [
+      {
+        "name": "Maje53/arc-payment-hub",
+        "url": "https://github.com/Maje53/arc-payment-hub",
+        "stars": 3,
+        "description": "USDC Bridge and Send app built on Arc Testnet using Circle App Kits SDK",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2", "@circle-fin/x402-batching"],
+        "last_commit": "2026-04-11"
+      },
+      {
+        "name": "mettin4/zeno",
+        "url": "https://github.com/mettin4/zeno",
+        "stars": 2,
+        "description": "Zeno - Arc App Kit Dashboard",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-10"
+      },
+      {
+        "name": "0731jiangyujilv/polypop",
+        "url": "https://github.com/0731jiangyujilv/polypop",
+        "stars": 1,
+        "description": "polypop.club — social prediction markets deployed from X conversations",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-05",
+        "notes": "package.json at webapp/package.json (monorepo). Also uses @x402/evm, @x402/fetch, @tma.js/sdk-react (Telegram Mini App). ETHGlobal submission."
+      },
+      {
+        "name": "Avnsmith/arcfx",
+        "url": "https://github.com/Avnsmith/arcfx",
+        "stars": 0,
+        "description": "ArcFX - Multichain DEX on Arc Testnet",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-02"
+      },
+      {
+        "name": "Doppler2u/Flowfi",
+        "url": "https://github.com/Doppler2u/Flowfi",
+        "stars": 0,
+        "description": "Pay-per-view content marketplace on Arc Testnet",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-09",
+        "notes": "package.json at frontend/package.json (monorepo)"
+      },
+      {
+        "name": "bayrakdarerdem/freelance-arc",
+        "url": "https://github.com/bayrakdarerdem/freelance-arc",
+        "stars": 0,
+        "description": "Blockchain-powered freelance marketplace on Arc Network",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-circle-wallets", "@circle-fin/adapter-viem-v2", "@circle-fin/developer-controlled-wallets"],
+        "last_commit": "2026-04-11",
+        "notes": "Uses Anthropic Claude API for agent-to-agent commerce demo. ERC-8183 escrow lifecycle."
+      },
+      {
+        "name": "TS-mfon/proofpay-escrow",
+        "url": "https://github.com/TS-mfon/proofpay-escrow",
+        "stars": 0,
+        "description": "Arc + GenLayer ProofPay escrow dapp",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-circle-wallets", "@circle-fin/adapter-ethers-v6", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-13",
+        "notes": "package.json at frontend/package.json (monorepo). GenLayer AI verdict contract on Studionet judges escrow release."
+      },
+      {
+        "name": "TS-mfon/sourcebounty-arc-genlayer",
+        "url": "https://github.com/TS-mfon/sourcebounty-arc-genlayer",
+        "stars": 0,
+        "description": "Arc + GenLayer source bounty dapp",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-circle-wallets", "@circle-fin/adapter-ethers-v6", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-13",
+        "notes": "package.json at frontend/package.json (monorepo). Same pattern as proofpay-escrow by same developer."
+      },
+      {
+        "name": "Fbiondo00/PolyAgents",
+        "url": "https://github.com/Fbiondo00/PolyAgents",
+        "stars": 0,
+        "description": "AI-powered autonomous trading vault for Polymarket BTC markets",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-05",
+        "notes": "ETHGlobal Cannes 2026 submission. Multi-chain: Arc + Hedera + ENS. Gemini AI trading decisions."
+      },
+      {
+        "name": "developermynk/Arc-Wallet",
+        "url": "https://github.com/developermynk/Arc-Wallet",
+        "stars": 0,
+        "description": "Arc Wallet app",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-05",
+        "notes": "Dashboard listed swap-kit but NOT confirmed in package.json. Only app-kit and adapter-viem-v2 verified."
+      },
+      {
+        "name": "mrrobot792/lumina",
+        "url": "https://github.com/mrrobot792/lumina",
+        "stars": 0,
+        "description": "Lumina DEX — reference implementation for Arc Testnet",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-13"
+      },
+      {
+        "name": "starlash7/Arc-test",
+        "url": "https://github.com/starlash7/Arc-test",
+        "stars": 0,
+        "description": "ERC-8183 escrow quickstart + App Kit playground",
+        "kits": ["@circle-fin/app-kit", "@circle-fin/adapter-circle-wallets", "@circle-fin/adapter-viem-v2", "@circle-fin/developer-controlled-wallets"],
+        "last_commit": "2026-04-06"
+      }
+    ]
+  },
+  "bridge-kit": {
+    "product": "Circle Bridge Kit",
+    "total": 11,
+    "repos": [
+      {
+        "name": "circlefin/arc-fintech",
+        "url": "https://github.com/circlefin/arc-fintech",
+        "stars": 18,
+        "description": "This sample app demonstrates a multi-chain treasury management system with cross-chain interoperability.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-circle-wallets", "@circle-fin/developer-controlled-wallets"],
+        "last_commit": "2026-04-14"
+      },
+      {
+        "name": "circlefin/circle-bridge-kit-transfer",
+        "url": "https://github.com/circlefin/circle-bridge-kit-transfer",
+        "stars": 6,
+        "description": "A sample application that demonstrates how to use Bridge Kit to make cross chain USDC transfers with a wallet connect experience.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-solana", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-09"
+      },
+      {
+        "name": "dharmanan/Arc-Testnet-Bridge-Swap",
+        "url": "https://github.com/dharmanan/Arc-Testnet-Bridge-Swap",
+        "stars": 4,
+        "description": "Arc Bridge Swap: Uniswap V2 DEX + Circle Bridge Kit integration for Sepolia ↔ Arc testnet USDC transfers",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-03-10"
+      },
+      {
+        "name": "mjkid221/fff-cctp-bridge",
+        "url": "https://github.com/mjkid221/fff-cctp-bridge",
+        "stars": 1,
+        "description": "The Workspace for Cross-Chain Transfer Protocol (CCTP) v2",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-solana", "@circle-fin/adapter-viem-v2", "@circle-fin/provider-cctp-v2"],
+        "last_commit": "2026-04-11"
+      },
+      {
+        "name": "tomasfonsecsi/zentryx",
+        "url": "https://github.com/tomasfonsecsi/zentryx",
+        "stars": 0,
+        "description": "Stablecoin bridge interface built on Arc",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-11"
+      },
+      {
+        "name": "Emperoar07/Presto",
+        "url": "https://github.com/Emperoar07/Presto",
+        "stars": 0,
+        "description": "A decentralized exchange on Tempo blockchain",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-solana-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-10"
+      },
+      {
+        "name": "Kewe63/arc-network-dex",
+        "url": "https://github.com/Kewe63/arc-network-dex",
+        "stars": 0,
+        "description": "",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-04-02"
+      },
+      {
+        "name": "HongmingWang-Rabbit/usdc_bridge_widget",
+        "url": "https://github.com/HongmingWang-Rabbit/usdc_bridge_widget",
+        "stars": 0,
+        "description": "",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-03-27"
+      },
+      {
+        "name": "linux070/stac-defi",
+        "url": "https://github.com/linux070/stac-defi",
+        "stars": 0,
+        "description": "Stac leverages Arc's sub-second finality and USDC gas for frictionless, swapping, bridging, and liquidity provision.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2026-03-01"
+      },
+      {
+        "name": "EggsLeggs/usdc-hopper-hackathon",
+        "url": "https://github.com/EggsLeggs/usdc-hopper-hackathon",
+        "stars": 0,
+        "description": "USDC Hopper is a lightweight cross-chain transfer application built with Circle's Bridge Kit and Arc to make moving USDC between networks effortless.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2"],
+        "last_commit": "2025-12-10"
+      },
+      {
+        "name": "aicarcwallet-arc/hackthone",
+        "url": "https://github.com/aicarcwallet-arc/hackthone",
+        "stars": 0,
+        "description": "AI-powered vocabulary game on Arc Testnet. Earn AIC tokens, swap to USDC, bridge to any chain. Built with Circle Bridge Kit, OpenAI validation, and React.",
+        "kits": ["@circle-fin/bridge-kit", "@circle-fin/adapter-viem-v2", "@circle-fin/developer-controlled-wallets"],
+        "last_commit": "2025-11-08"
+      }
+    ]
+  },
+  "swap-kit": {
+    "product": "Circle Swap Kit",
+    "total": 0,
+    "repos": []
+  }
+}
