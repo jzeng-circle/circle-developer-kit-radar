@@ -59,11 +59,50 @@ export function invalidateCache() {
 // Active config — can be overridden at runtime by the UI
 let activeConfig: SourceConfig[] = DEFAULT_SEARCH_CONFIG
 let activeRelevanceTerms: string[] = ['circle bridge kit', 'circlebridgekit', 'bridgekit', '@circle-fin/bridge-kit', 'circle-fin/bridge-kit']
+let activeProductId   = 'bridge-kit'
+let activeProductName = 'Circle Bridge Kit'
 
-export function setSearchConfig(config: SourceConfig[], relevanceTerms?: string[]) {
+export function setSearchConfig(config: SourceConfig[], relevanceTerms?: string[], productId?: string, productName?: string) {
   activeConfig = config
   if (relevanceTerms) activeRelevanceTerms = relevanceTerms
+  if (productId)   activeProductId   = productId
+  if (productName) activeProductName = productName
   invalidateCache() // config changed — cached results are stale
+}
+
+// ─── Repo persistence ─────────────────────────────────────────────────────────
+// Writes fetched repo data to localStorage so external services can read it.
+// Key: 'circle-radar-repos'
+// Structure: { [productId]: { product, repos, lastUpdated } }
+
+const REPOS_STORAGE_KEY = 'circle-radar-repos'
+
+type PersistedRepoEntry = {
+  product: string
+  repos: { name: string; url: string; stars: number; description: string; kits: string[] }[]
+  lastUpdated: string
+}
+
+function persistRepos(productId: string, productName: string, repos: { name: string; url?: string; stars: number; description: string; kits: string[] }[]) {
+  try {
+    const existing: Record<string, PersistedRepoEntry> = JSON.parse(localStorage.getItem(REPOS_STORAGE_KEY) ?? '{}')
+    existing[productId] = {
+      product: productName,
+      repos: repos.map(r => ({
+        name: r.name,
+        url:  r.url ?? `https://github.com/${r.name}`,
+        stars: r.stars,
+        description: r.description,
+        kits: r.kits,
+      })),
+      lastUpdated: new Date().toISOString(),
+    }
+    localStorage.setItem(REPOS_STORAGE_KEY, JSON.stringify(existing, null, 2))
+    // Also expose on window for easy access from browser console / extensions
+    ;(window as any).__circleRadarRepos = existing
+  } catch {
+    // localStorage unavailable — silently skip
+  }
 }
 
 function queriesFor(source: string): string[] {
@@ -479,7 +518,9 @@ export async function fetchGitHubRepos() {
       kits: r.kits,
     }))
 
-  return toCache(key, repos.sort((a, b) => b.stars - a.stars).slice(0, 20))
+  const sorted = repos.sort((a, b) => b.stars - a.stars).slice(0, 20)
+  persistRepos(activeProductId, activeProductName, sorted)
+  return toCache(key, sorted)
 }
 
 // ─── Reddit ──────────────────────────────────────────────────────────────────

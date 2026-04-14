@@ -114,7 +114,7 @@ export function useData(range: string, product: ProductConfig, enabledSources: S
 
   const load = useCallback(async () => {
     // Apply this product's search config and relevance terms before fetching
-    setSearchConfig(product.searchConfig, product.relevanceTerms)
+    setSearchConfig(product.searchConfig, product.relevanceTerms, product.id, product.name)
 
     // Reset to loading state, keep current data visible
     setData(prev => ({
