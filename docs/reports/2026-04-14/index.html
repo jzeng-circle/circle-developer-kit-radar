@@ -1,0 +1,665 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Report: 2026-04-14 — Circle Developer Kit</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+    :root {
+      --bg: #0a0b0f;
+      --surface: #111318;
+      --surface-2: #1a1d24;
+      --border: #1f2330;
+      --text: #e2e4ea;
+      --text-muted: #6b7280;
+      --text-dim: #9ca3af;
+      --accent: #6366f1;
+      --accent-light: #818cf8;
+      --green: #10b981;
+      --green-dim: #34d399;
+      --yellow: #f59e0b;
+      --blue: #3b82f6;
+    }
+
+    body {
+      font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', system-ui, sans-serif;
+      background: var(--bg);
+      color: var(--text);
+      line-height: 1.6;
+      min-height: 100vh;
+    }
+
+    /* Header */
+    header {
+      border-bottom: 1px solid var(--border);
+      background: rgba(17, 19, 24, 0.85);
+      backdrop-filter: blur(12px);
+      position: sticky;
+      top: 0;
+      z-index: 10;
+    }
+
+    .header-inner {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 13px 24px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+    }
+
+    .header-left { display: flex; align-items: center; gap: 12px; }
+
+    .logo {
+      width: 26px; height: 26px;
+      border-radius: 7px;
+      background: var(--accent);
+      display: flex; align-items: center; justify-content: center;
+      flex-shrink: 0;
+    }
+
+    .logo svg { width: 13px; height: 13px; }
+
+    .header-breadcrumb { font-size: 13px; color: var(--text-muted); display: flex; align-items: center; gap: 6px; }
+    .header-breadcrumb a { color: var(--text-muted); text-decoration: none; }
+    .header-breadcrumb a:hover { color: var(--text); }
+    .header-breadcrumb .sep { color: var(--border); }
+    .header-breadcrumb .current { color: var(--text); font-weight: 500; }
+
+    /* Nav tabs */
+    .tab-nav {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 0 24px;
+      display: flex;
+      gap: 0;
+      border-top: 1px solid var(--border);
+    }
+
+    .tab-btn {
+      padding: 10px 18px;
+      font-size: 13px;
+      font-weight: 500;
+      color: var(--text-muted);
+      background: none;
+      border: none;
+      border-bottom: 2px solid transparent;
+      cursor: pointer;
+      transition: color 0.15s, border-color 0.15s;
+      margin-bottom: -1px;
+    }
+
+    .tab-btn:hover { color: var(--text); }
+
+    .tab-btn.active {
+      color: var(--accent-light);
+      border-bottom-color: var(--accent);
+    }
+
+    /* Layout */
+    main {
+      max-width: 980px;
+      margin: 0 auto;
+      padding: 40px 24px 80px;
+    }
+
+    .tab-panel { display: none; }
+    .tab-panel.active { display: block; }
+
+    /* Report hero */
+    .report-hero {
+      margin-bottom: 36px;
+      padding-bottom: 28px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .report-label {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: var(--accent-light);
+      margin-bottom: 10px;
+    }
+
+    .report-hero h2 { font-size: 26px; font-weight: 700; margin-bottom: 8px; }
+
+    .report-meta {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      flex-wrap: wrap;
+      margin-top: 14px;
+    }
+
+    .meta-item {
+      font-size: 12px;
+      color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      gap: 5px;
+    }
+
+    .meta-item strong { color: var(--text-dim); }
+
+    /* Stat row */
+    .stat-row {
+      display: flex;
+      gap: 12px;
+      flex-wrap: wrap;
+      margin-bottom: 32px;
+    }
+
+    .stat-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 14px 18px;
+      min-width: 110px;
+    }
+
+    .stat-card .val {
+      font-size: 22px;
+      font-weight: 700;
+      color: var(--text);
+      line-height: 1.2;
+    }
+
+    .stat-card .lbl {
+      font-size: 11px;
+      color: var(--text-muted);
+      margin-top: 3px;
+    }
+
+    /* Sections */
+    .report-section { margin-bottom: 40px; }
+
+    .report-section h3 {
+      font-size: 15px;
+      font-weight: 600;
+      color: var(--text);
+      margin-bottom: 14px;
+      padding-bottom: 8px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .report-section h4 {
+      font-size: 13px;
+      font-weight: 600;
+      color: var(--text-dim);
+      margin: 18px 0 8px;
+    }
+
+    .report-section p {
+      font-size: 13px;
+      color: var(--text-dim);
+      line-height: 1.7;
+      margin-bottom: 12px;
+    }
+
+    /* Quotes */
+    .quotes { display: flex; flex-direction: column; gap: 10px; margin-bottom: 14px; }
+
+    blockquote {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-left: 3px solid var(--accent);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-dim);
+      font-style: italic;
+    }
+
+    blockquote cite {
+      display: block;
+      margin-top: 6px;
+      font-size: 11px;
+      color: var(--text-muted);
+      font-style: normal;
+    }
+
+    /* Callout */
+    .callout {
+      background: rgba(99, 102, 241, 0.07);
+      border: 1px solid rgba(99, 102, 241, 0.2);
+      border-radius: 8px;
+      padding: 12px 16px;
+      font-size: 13px;
+      color: var(--text-dim);
+      margin-bottom: 14px;
+    }
+
+    .callout strong { color: var(--accent-light); }
+
+    .callout.yellow {
+      background: rgba(245, 158, 11, 0.07);
+      border-color: rgba(245, 158, 11, 0.2);
+    }
+
+    .callout.yellow strong { color: var(--yellow); }
+
+    .callout.green {
+      background: rgba(16, 185, 129, 0.07);
+      border-color: rgba(16, 185, 129, 0.2);
+    }
+
+    .callout.green strong { color: var(--green-dim); }
+
+    /* Tables */
+    .table-wrap { overflow-x: auto; margin-bottom: 16px; }
+
+    table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 12px;
+    }
+
+    th {
+      text-align: left;
+      padding: 8px 12px;
+      background: var(--surface);
+      color: var(--text-muted);
+      font-weight: 600;
+      border-bottom: 1px solid var(--border);
+      white-space: nowrap;
+    }
+
+    td {
+      padding: 9px 12px;
+      border-bottom: 1px solid var(--border);
+      color: var(--text-dim);
+      vertical-align: top;
+    }
+
+    tr:last-child td { border-bottom: none; }
+    tr:hover td { background: var(--surface); }
+
+    td a {
+      color: var(--accent-light);
+      text-decoration: none;
+    }
+
+    td a:hover { text-decoration: underline; }
+
+    /* Action list */
+    .action-list {
+      display: flex;
+      flex-direction: column;
+      gap: 10px;
+    }
+
+    .action-item {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      padding: 14px 16px;
+      display: flex;
+      gap: 12px;
+      align-items: flex-start;
+    }
+
+    .action-num {
+      font-size: 11px;
+      font-weight: 700;
+      color: var(--accent-light);
+      background: rgba(99, 102, 241, 0.12);
+      border-radius: 4px;
+      padding: 2px 6px;
+      flex-shrink: 0;
+      margin-top: 1px;
+    }
+
+    .action-text { font-size: 13px; color: var(--text-dim); line-height: 1.55; }
+    .action-text strong { color: var(--text); }
+
+    /* Kit badge */
+    .kit-badge {
+      display: inline-block;
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 4px;
+      margin-right: 4px;
+    }
+
+    .kit-badge.app    { background: rgba(99, 102, 241, 0.15); color: var(--accent-light); }
+    .kit-badge.bridge { background: rgba(59, 130, 246, 0.15); color: #60a5fa; }
+    .kit-badge.swap   { background: rgba(245, 158, 11, 0.15); color: #fbbf24; }
+
+    /* Footer */
+    footer {
+      border-top: 1px solid var(--border);
+      padding: 20px 24px;
+      text-align: center;
+    }
+
+    footer p { font-size: 12px; color: var(--text-muted); }
+  </style>
+</head>
+<body>
+
+<header>
+  <div class="header-inner">
+    <div class="header-left">
+      <div class="logo">
+        <svg viewBox="0 0 24 24" fill="none" stroke="white" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/>
+        </svg>
+      </div>
+      <div class="header-breadcrumb">
+        <a href="../">Feedback Hub</a>
+        <span class="sep">/</span>
+        <span class="current">2026-04-14</span>
+      </div>
+    </div>
+  </div>
+
+  <nav class="tab-nav">
+    <button class="tab-btn active" onclick="switchTab('twitter')">Twitter / X Feedback</button>
+    <button class="tab-btn" onclick="switchTab('github')">GitHub Ecosystem</button>
+  </nav>
+</header>
+
+<main>
+
+  <!-- ── TAB 1: Twitter Feedback ── -->
+  <div class="tab-panel active" id="tab-twitter">
+
+    <div class="report-hero">
+      <div class="report-label">Qualitative &middot; Community Feedback</div>
+      <h2>Arc App Kits — Launch Tweet Analysis</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+        100 replies to @arc's "App Kits is now available" tweet (Apr 10, 2026) coded for themes, sentiment, and builder intent.
+      </p>
+      <div class="report-meta">
+        <span class="meta-item"><strong>Source</strong> Twitter/X — tweet ID 2042595956819120176</span>
+        <span class="meta-item"><strong>Compiled</strong> April 14, 2026</span>
+      </div>
+    </div>
+
+    <!-- Post Performance -->
+    <div class="stat-row">
+      <div class="stat-card"><div class="val">65,905</div><div class="lbl">Views</div></div>
+      <div class="stat-card"><div class="val">511</div><div class="lbl">Likes</div></div>
+      <div class="stat-card"><div class="val">129</div><div class="lbl">Replies</div></div>
+      <div class="stat-card"><div class="val">86</div><div class="lbl">Retweets</div></div>
+      <div class="stat-card"><div class="val">56</div><div class="lbl">Quotes</div></div>
+      <div class="stat-card"><div class="val">90</div><div class="lbl">Bookmarks</div></div>
+    </div>
+
+    <!-- Executive Summary -->
+    <div class="report-section">
+      <h3>Executive Summary</h3>
+      <p>
+        Response to the App Kits launch was strongly positive. Developers consistently highlighted two themes:
+        relief at having bridge, swap, and send unified in a single SDK, and excitement about built-in monetization.
+        Several builders signaled active intent to integrate. One substantive technical question about fee atomicity
+        went unanswered and warrants follow-up in documentation.
+      </p>
+    </div>
+
+    <!-- Key Findings -->
+    <div class="report-section">
+      <h3>Key Findings</h3>
+
+      <h4>1. Developer Experience — The Core Message is Landing</h4>
+      <p>The most common substantive reaction was relief at not having to stitch together separate integrations.</p>
+      <div class="quotes">
+        <blockquote>"finally some clean building blocks — was tired of frankensteining integrations"<cite>@katrin_fwa (1,972 followers)</cite></blockquote>
+        <blockquote>"Having bridge, swap, and send in a single SDK will make building much faster"<cite>@ArjunbhimArjun (388 followers)</cite></blockquote>
+        <blockquote>"This is solid finally simplifying multichain without all the integration headache"<cite>@iamTiwaa (2,097 followers)</cite></blockquote>
+      </div>
+      <div class="callout green"><strong>Takeaway:</strong> The unified SDK positioning is resonating. The pain point (fragmented integrations) is real and well understood by the audience.</div>
+
+      <h4>2. Built-in Monetization — Top Differentiator</h4>
+      <p>Revenue sharing baked into transaction flows was called out more than any other single feature.</p>
+      <div class="quotes">
+        <blockquote>"Built-in rev share is the cheat code"<cite>@prateekhh (6,448 followers)</cite></blockquote>
+        <blockquote>"developers can configure revenue sharing directly in transaction flows without deploying custom contracts... this is a revolutionary approach"<cite>@tp058181 (317 followers)</cite></blockquote>
+      </div>
+      <div class="callout green"><strong>Takeaway:</strong> Monetization is a differentiator worth amplifying in marketing and docs. Most SDKs make revenue sharing an afterthought.</div>
+
+      <h4>3. Open Technical Question — Fee Atomicity</h4>
+      <div class="quotes">
+        <blockquote>"The built-in monetization feature looks great. Are the configured fees collected within the same atomic transaction, or does it require a separate contract interaction? I'm curious about the impact on gas overhead, especially for high-frequency payment workflows."<cite>@Albatros_0x (894 followers, 1 like) — no reply received</cite></blockquote>
+      </div>
+      <div class="callout yellow"><strong>Takeaway:</strong> This is a legitimate concern for production builders. It should be addressed in the FAQ or docs. If fees are atomic, that is a strong selling point to state explicitly.</div>
+
+      <h4>4. Builders Signaling Intent to Integrate</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Handle</th><th>Signal</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>@Meridian_Fi (429)</td><td>"Already using Bridge Kit in production. Excited to integrate Swap and Send next."</td></tr>
+            <tr><td>@btcmonie (9,868)</td><td>"implementing on UnitFlow Finance pretty soon"</td></tr>
+            <tr><td>@web3_attorney (3,518)</td><td>"this should complete my flow agent that I'm building"</td></tr>
+            <tr><td>@jay2wrld (199)</td><td>"Can't wait to integrate this"</td></tr>
+            <tr><td>@fact_met (168)</td><td>"i used now it's really work smooth"</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <div class="callout"><strong>Takeaway:</strong> @Meridian_Fi is already in production on Bridge Kit — a potential case study candidate.</div>
+
+      <h4>5. Comment Quality Breakdown</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Category</th><th>Count</th><th>Notes</th></tr>
+          </thead>
+          <tbody>
+            <tr><td>Substantive developer feedback</td><td>~15</td><td>Specific reactions to features or use cases</td></tr>
+            <tr><td>General positive ("LFG", "amazing")</td><td>~50</td><td>Community engagement, low signal</td></tr>
+            <tr><td>Intent to integrate</td><td>~5</td><td>Named specific use cases or timelines</td></tr>
+            <tr><td>Technical questions</td><td>~1</td><td>Fee atomicity question from @Albatros_0x</td></tr>
+            <tr><td>Spam / off-topic</td><td>~3</td><td>Unrelated ads from bot accounts</td></tr>
+            <tr><td>Low-effort filler</td><td>~25</td><td>Non-English, emojis only — likely airdrop farmers</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Recommended Actions -->
+    <div class="report-section">
+      <h3>Recommended Actions</h3>
+      <div class="action-list">
+        <div class="action-item">
+          <span class="action-num">01</span>
+          <div class="action-text"><strong>Answer the fee atomicity question</strong> — reply to @Albatros_0x publicly and add it to the App Kits FAQ. If fees are atomic, say so clearly.</div>
+        </div>
+        <div class="action-item">
+          <span class="action-num">02</span>
+          <div class="action-text"><strong>Reach out to @Meridian_Fi</strong> — already in production on Bridge Kit and eager to expand. Strong case study candidate.</div>
+        </div>
+        <div class="action-item">
+          <span class="action-num">03</span>
+          <div class="action-text"><strong>Amplify the monetization angle</strong> — it generated the most signal from higher-follower accounts. Consider a dedicated thread or doc section on revenue-sharing configuration.</div>
+        </div>
+        <div class="action-item">
+          <span class="action-num">04</span>
+          <div class="action-text"><strong>Follow up with @btcmonie / UnitFlow Finance</strong> — named integration intent publicly, worth a DM to support their onboarding.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-twitter -->
+
+
+  <!-- ── TAB 2: GitHub Ecosystem ── -->
+  <div class="tab-panel" id="tab-github">
+
+    <div class="report-hero">
+      <div class="report-label">Qualitative &middot; GitHub Ecosystem</div>
+      <h2>Circle Developer Kit — GitHub Repos Report</h2>
+      <p style="font-size:13px;color:var(--text-muted);margin-top:6px;">
+        23 public repos using App Kit or Bridge Kit, verified against package.json. Point-in-time snapshot from the radar dashboard.
+      </p>
+      <div class="report-meta">
+        <span class="meta-item"><strong>Source</strong> circle-developer-kit-radar / github-repos-snapshot.json</span>
+        <span class="meta-item"><strong>Compiled</strong> April 14, 2026</span>
+      </div>
+    </div>
+
+    <!-- At a Glance -->
+    <div class="stat-row">
+      <div class="stat-card"><div class="val">12</div><div class="lbl">App Kit repos</div></div>
+      <div class="stat-card"><div class="val">11</div><div class="lbl">Bridge Kit repos</div></div>
+      <div class="stat-card"><div class="val">0</div><div class="lbl">Swap Kit repos</div></div>
+      <div class="stat-card"><div class="val">35</div><div class="lbl">Total stars</div></div>
+      <div class="stat-card"><div class="val">22</div><div class="lbl">Total forks</div></div>
+    </div>
+
+    <!-- App Kit -->
+    <div class="report-section">
+      <h3><span class="kit-badge app">App Kit</span> Adoption Summary</h3>
+
+      <p>12 confirmed public repos &middot; 6 stars &middot; 3 forks &middot; all activity within 2 weeks of April 10 launch.</p>
+
+      <h4>What builders are building</h4>
+      <p>Bridge + send UIs (3), DEX/swap interfaces (2), content payment gating (1), ERC-8183 / agent commerce (2), Arc + GenLayer AI-judged escrow (2), multi-protocol hackathon submissions (2), dashboard/wallet UI (2).</p>
+
+      <h4>Notable pattern — Agentic use cases</h4>
+      <div class="callout">
+        <strong>Organic &amp; undocumented:</strong> Multiple builders are independently pairing App Kit with AI systems —
+        Claude API for agent-to-agent commerce (freelance-arc), GenLayer intelligent contracts for escrow arbitration
+        (proofpay-escrow, sourcebounty), and Gemini-powered trading (PolyAgents). Circle has not documented this use case.
+      </div>
+
+      <h4>Top signal repos</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Repo</th><th>What it builds</th><th>Signal</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><a href="https://github.com/bayrakdarerdem/freelance-arc" target="_blank">freelance-arc</a></td><td>Freelance marketplace + AI agent-to-agent commerce</td><td>Live demo, deployed contracts, ERC-8183</td></tr>
+            <tr><td><a href="https://github.com/Doppler2u/Flowfi" target="_blank">Flowfi</a></td><td>Pay-per-view content marketplace</td><td>Live on Vercel</td></tr>
+            <tr><td><a href="https://github.com/0731jiangyujilv/polypop" target="_blank">polypop</a></td><td>Social prediction markets via X + Arc + Uniswap + Chainlink</td><td>ETHGlobal submission</td></tr>
+            <tr><td><a href="https://github.com/TS-mfon/proofpay-escrow" target="_blank">proofpay-escrow</a></td><td>Escrow with GenLayer AI verdict</td><td>Deployed contracts</td></tr>
+            <tr><td><a href="https://github.com/TS-mfon/sourcebounty-arc-genlayer" target="_blank">sourcebounty</a></td><td>Research bounties with GenLayer AI judge</td><td>Deployed contracts</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Key gaps</h4>
+      <div class="callout yellow"><strong>Swap unavailable on Arc Testnet</strong> (mainnet-only) — blocks the full send/bridge/swap loop for testnet builders. No Solana support.</div>
+
+      <h4>All App Kit repos</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Repo</th><th>&#9733;</th><th>Forks</th><th>Last Commit</th><th>What It Builds</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><a href="https://github.com/Maje53/arc-payment-hub" target="_blank">Maje53/arc-payment-hub</a></td><td>3</td><td>1</td><td>2026-04-11</td><td>USDC bridge + send, x402-batching</td></tr>
+            <tr><td><a href="https://github.com/mettin4/zeno" target="_blank">mettin4/zeno</a></td><td>2</td><td>1</td><td>2026-04-10</td><td>Arc App Kit dashboard</td></tr>
+            <tr><td><a href="https://github.com/0731jiangyujilv/polypop" target="_blank">0731jiangyujilv/polypop</a></td><td>1</td><td>0</td><td>2026-04-05</td><td>Social prediction markets</td></tr>
+            <tr><td><a href="https://github.com/Avnsmith/arcfx" target="_blank">Avnsmith/arcfx</a></td><td>0</td><td>0</td><td>2026-04-02</td><td>Bridge + swap frontend</td></tr>
+            <tr><td><a href="https://github.com/Doppler2u/Flowfi" target="_blank">Doppler2u/Flowfi</a></td><td>0</td><td>0</td><td>2026-04-09</td><td>Pay-per-view content marketplace</td></tr>
+            <tr><td><a href="https://github.com/bayrakdarerdem/freelance-arc" target="_blank">bayrakdarerdem/freelance-arc</a></td><td>0</td><td>0</td><td>2026-04-11</td><td>Freelance + AI agent commerce</td></tr>
+            <tr><td><a href="https://github.com/TS-mfon/proofpay-escrow" target="_blank">TS-mfon/proofpay-escrow</a></td><td>0</td><td>0</td><td>2026-04-13</td><td>Escrow with GenLayer AI verdict</td></tr>
+            <tr><td><a href="https://github.com/TS-mfon/sourcebounty-arc-genlayer" target="_blank">TS-mfon/sourcebounty-arc-genlayer</a></td><td>0</td><td>0</td><td>2026-04-13</td><td>Research bounties with AI judge</td></tr>
+          </tbody>
+        </table>
+      </div>
+    </div>
+
+    <!-- Bridge Kit -->
+    <div class="report-section">
+      <h3><span class="kit-badge bridge">Bridge Kit</span> Adoption Summary</h3>
+
+      <p>11 repos &middot; 29 stars &middot; 19 forks &middot; activity spanning Nov 2025 – Apr 2026.</p>
+
+      <h4>Chain footprint</h4>
+      <p>Widest coverage of any kit: Arc Testnet + Ethereum Sepolia baseline, plus Base Sepolia (6+ repos), Arbitrum Sepolia (3), Solana Devnet (3), Monad testnet via SDK patch (fff-cctp-bridge), and mainnet EVM chains. Bridge Kit is the only kit with active Solana usage and the only one reaching mainnet.</p>
+
+      <h4>Sophisticated community patterns</h4>
+      <div class="callout"><strong>Builders have independently solved:</strong> Permit2 relayer, IndexedDB persistence for bridge recovery, SDK patches for unsupported chains (Monad), LavaMoat supply chain security, and npm-published widgets (<code>@honeypot-finance/usdc-bridge-widget</code>). None of these are in official docs.</div>
+
+      <h4>Top signal repos</h4>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr><th>Repo</th><th>&#9733;</th><th>Forks</th><th>Signal</th></tr>
+          </thead>
+          <tbody>
+            <tr><td><a href="https://github.com/circlefin/arc-fintech" target="_blank">circlefin/arc-fintech</a></td><td>18</td><td>7</td><td>Most-starred; treasury management reference</td></tr>
+            <tr><td><a href="https://github.com/circle-bridge-kit-transfer" target="_blank">circle-bridge-kit-transfer</a></td><td>6</td><td>7</td><td>Official Circle reference repo</td></tr>
+            <tr><td>fff-cctp-bridge</td><td>—</td><td>—</td><td>Most technically advanced: Monad patch, LavaMoat, Storybook</td></tr>
+            <tr><td>usdc_bridge_widget</td><td>—</td><td>—</td><td>Published as npm package <code>@honeypot-finance/usdc-bridge-widget</code></td></tr>
+            <tr><td>Presto</td><td>—</td><td>—</td><td>Most feature-complete community DEX: AMM + NFT deploy + analytics</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <h4>Key gaps</h4>
+      <div class="callout yellow"><strong>zentryx</strong> has Bridge Kit declared but <code>kit.bridge()</code> is commented out — friction at the final wiring step. Fee/monetization configuration not represented in any Bridge Kit repo.</div>
+    </div>
+
+    <!-- Swap Kit -->
+    <div class="report-section">
+      <h3><span class="kit-badge swap">Swap Kit</span> Adoption Summary</h3>
+
+      <div class="callout yellow">
+        <strong>0 repos &middot; 0 stars &middot; 0 forks.</strong> No public usage detected. Builders who need swap either use App Kit's bundled <code>kit.swap()</code>
+        or deploy custom on-chain AMMs directly (Presto, arc-network-dex). Swap Kit either does not exist as a standalone package
+        or is not discoverable enough to attract adoption.
+      </div>
+
+      <div class="callout">
+        <strong>Recommended:</strong> If Circle intends swap to be a first-class primitive alongside bridge and send, this needs either
+        a dedicated published package or much stronger discoverability of <code>kit.swap()</code> within App Kit docs.
+      </div>
+    </div>
+
+    <!-- Recommended Actions -->
+    <div class="report-section">
+      <h3>Recommended Actions</h3>
+      <div class="action-list">
+        <div class="action-item">
+          <span class="action-num">01</span>
+          <div class="action-text"><strong>Document the agentic use case</strong> — freelance-arc, proofpay-escrow, and sourcebounty have independently arrived at an AI + App Kit pattern that Circle has not marketed or documented. This is organic signal worth amplifying.</div>
+        </div>
+        <div class="action-item">
+          <span class="action-num">02</span>
+          <div class="action-text"><strong>Address Swap Kit discoverability</strong> — zero standalone adoption. Clarify whether a separate package exists and add prominent docs for <code>kit.swap()</code> in App Kit.</div>
+        </div>
+        <div class="action-item">
+          <span class="action-num">03</span>
+          <div class="action-text"><strong>Document IndexedDB bridge recovery</strong> — multiple builders independently solved this. It should be in official docs to reduce duplicated effort.</div>
+        </div>
+        <div class="action-item">
+          <span class="action-num">04</span>
+          <div class="action-text"><strong>Reach out to fff-cctp-bridge</strong> — most technically advanced community repo. Has solved real production problems (Monad patch, LavaMoat). Worth engaging as a contributor or case study.</div>
+        </div>
+        <div class="action-item">
+          <span class="action-num">05</span>
+          <div class="action-text"><strong>Enable Swap Kit on Arc Testnet</strong> — the mainnet-only restriction blocks the full loop for early explorers and hackathon builders who are exclusively on testnet.</div>
+        </div>
+      </div>
+    </div>
+
+  </div><!-- /tab-github -->
+
+</main>
+
+<footer>
+  <p>Circle Developer Kit Radar &middot; Internal use only &middot; <a href="../" style="color:var(--text-muted);text-decoration:none;">← Back to Feedback Hub</a></p>
+</footer>
+
+<script>
+  function switchTab(name) {
+    document.querySelectorAll('.tab-panel').forEach(p => p.classList.remove('active'));
+    document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+    document.getElementById('tab-' + name).classList.add('active');
+    event.currentTarget.classList.add('active');
+  }
+</script>
+
+</body>
+</html>
